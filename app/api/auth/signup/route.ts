@@ -73,7 +73,14 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Get existing users
-		const usersData = await getUsers();
+		let usersData: UsersData;
+		try {
+			usersData = await getUsers();
+		} catch (fileError) {
+			console.error("Error reading users file:", fileError);
+			// Initialize with empty users if file doesn't exist
+			usersData = { users: [] };
+		}
 
 		// Check if email already exists
 		const existingUser = usersData.users.find(
@@ -81,7 +88,7 @@ export async function POST(request: NextRequest) {
 		);
 		if (existingUser) {
 			return NextResponse.json(
-				{ error: "An account with this email already exists" },
+				{ error: "An account with this email already exists. Please sign in instead." },
 				{ status: 400 }
 			);
 		}
@@ -96,7 +103,16 @@ export async function POST(request: NextRequest) {
 		};
 
 		usersData.users.push(newUser);
-		await saveUsers(usersData);
+		
+		try {
+			await saveUsers(usersData);
+		} catch (saveError) {
+			console.error("Error saving user:", saveError);
+			return NextResponse.json(
+				{ error: "Unable to save account. Please try again." },
+				{ status: 500 }
+			);
+		}
 
 		// Generate token
 		const token = generateToken();
@@ -111,8 +127,9 @@ export async function POST(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Signup error:", error);
+		const errorMessage = error instanceof Error ? error.message : "Unknown error";
 		return NextResponse.json(
-			{ error: "Failed to create account" },
+			{ error: `Failed to create account: ${errorMessage}` },
 			{ status: 500 }
 		);
 	}
