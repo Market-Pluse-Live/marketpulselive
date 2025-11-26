@@ -61,7 +61,7 @@ async function handlePaymentSucceeded(
 	// - Trigger other business logic
 	console.log("[PAYMENT SUCCEEDED]", {
 		paymentId: event.data.id,
-		userId: event.data.user_id,
+		userId: (event.data as unknown as { user_id?: string }).user_id || "unknown",
 		amount: event.data.total,
 		currency: event.data.currency,
 	});
@@ -72,11 +72,17 @@ async function handleMembershipActivated(
 ): Promise<void> {
 	// Handle membership activation
 	// This grants access to the user
+	const data = event.data as unknown as { 
+		id: string; 
+		user_id?: string; 
+		company?: { id?: string }; 
+		access_pass_id?: string;
+	};
 	console.log("[MEMBERSHIP ACTIVATED]", {
-		membershipId: event.data.id,
-		userId: event.data.user_id,
-		companyId: event.data.company_id,
-		accessPassId: event.data.access_pass_id,
+		membershipId: data.id,
+		userId: data.user_id || "unknown",
+		companyId: data.company?.id || "unknown",
+		accessPassId: data.access_pass_id || "unknown",
 	});
 
 	// In a real scenario, you would:
@@ -90,10 +96,15 @@ async function handleMembershipDeactivated(
 ): Promise<void> {
 	// Handle membership deactivation
 	// This revokes access from the user
+	const data = event.data as unknown as { 
+		id: string; 
+		user_id?: string; 
+		company?: { id?: string };
+	};
 	console.log("[MEMBERSHIP DEACTIVATED]", {
-		membershipId: event.data.id,
-		userId: event.data.user_id,
-		companyId: event.data.company_id,
+		membershipId: data.id,
+		userId: data.user_id || "unknown",
+		companyId: data.company?.id || "unknown",
 	});
 
 	// In a real scenario, you would:
@@ -106,10 +117,15 @@ async function handleEntryApproved(
 	event: EntryApprovedWebhookEvent,
 ): Promise<void> {
 	// Handle entry approval (if using access passes)
+	const data = event.data as unknown as { 
+		id: string; 
+		user_id?: string; 
+		company_id?: string;
+	};
 	console.log("[ENTRY APPROVED]", {
-		entryId: event.data.id,
-		userId: event.data.user_id,
-		companyId: event.data.company_id,
+		entryId: data.id,
+		userId: data.user_id || "unknown",
+		companyId: data.company_id || "unknown",
 	});
 
 	// Grant access when entry is approved

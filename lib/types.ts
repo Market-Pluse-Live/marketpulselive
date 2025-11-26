@@ -20,6 +20,8 @@ export interface Room {
 	autoStart?: boolean;
 	lastUpdated?: string;
 	metrics?: StreamMetrics;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface UpdateRoomInput {

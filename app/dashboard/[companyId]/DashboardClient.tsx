@@ -150,7 +150,7 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 					? "bg-gradient-to-b from-gray-950 via-gray-950 to-gray-900" 
 					: "bg-gradient-to-b from-gray-50 via-white to-gray-100"
 			}`}>
-				<Navbar isRefreshing={true} />
+				<Navbar />
 				<div className="max-w-[1800px] mx-auto px-6 py-6">
 					<SkeletonStats />
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -172,11 +172,7 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 			<NotificationContainer />
 			
 			{/* Navbar */}
-			<Navbar 
-				onRefresh={handleRefresh} 
-				isRefreshing={isRefreshing}
-				notificationCount={stats.errors > 0 ? stats.errors : 0}
-			/>
+			<Navbar />
 
 			<div className="max-w-[1800px] mx-auto px-6 py-6">
 				{/* Stats Overview */}
