@@ -1,31 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import crypto from "crypto";
-
-const USERS_FILE = path.join(process.cwd(), "data", "users.json");
-
-interface User {
-	id: string;
-	name: string;
-	email: string;
-	password: string; // hashed
-	avatar?: string;
-	createdAt: string;
-}
-
-interface UsersData {
-	users: User[];
-}
-
-async function getUsers(): Promise<UsersData> {
-	try {
-		const data = await fs.readFile(USERS_FILE, "utf-8");
-		return JSON.parse(data);
-	} catch {
-		return { users: [] };
-	}
-}
+import { supabase } from "@/lib/supabase";
 
 function hashPassword(password: string): string {
 	return crypto.createHash("sha256").update(password).digest("hex");
@@ -48,24 +23,23 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Get users
-		const usersData = await getUsers();
+		// Find user in Supabase
+		const { data: user, error } = await supabase
+			.from("users")
+			.select("id, name, email, password_hash, avatar, created_at")
+			.eq("email", email.toLowerCase().trim())
+			.single();
 
-		// Find user by email
-		const user = usersData.users.find(
-			(u) => u.email.toLowerCase() === email.toLowerCase()
-		);
-
-		if (!user) {
+		if (error || !user) {
 			return NextResponse.json(
 				{ error: "Invalid email or password" },
 				{ status: 401 }
 			);
 		}
 
-		// Check password
+		// Verify password
 		const hashedPassword = hashPassword(password);
-		if (user.password !== hashedPassword) {
+		if (user.password_hash !== hashedPassword) {
 			return NextResponse.json(
 				{ error: "Invalid email or password" },
 				{ status: 401 }
@@ -76,17 +50,21 @@ export async function POST(request: NextRequest) {
 		const token = generateToken();
 
 		// Return user without password
-		const { password: _, ...userWithoutPassword } = user;
-
 		return NextResponse.json({
-			user: userWithoutPassword,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email,
+				avatar: user.avatar,
+				createdAt: user.created_at,
+			},
 			token,
 			message: "Login successful",
 		});
 	} catch (error) {
 		console.error("Login error:", error);
 		return NextResponse.json(
-			{ error: "Failed to login" },
+			{ error: "Login failed. Please try again." },
 			{ status: 500 }
 		);
 	}

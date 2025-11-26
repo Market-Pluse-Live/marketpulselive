@@ -219,19 +219,19 @@ export default function DiscoverPage() {
 					
 					<div className="flex items-center gap-3">
 						<Link href={isAuthenticated ? "/dashboard/dev-company" : "/"}>
-							<motion.button
-								whileHover={{ scale: 1.05 }}
-								whileTap={{ scale: 0.95 }}
-								className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-									isDark 
-										? "text-gray-400 hover:text-white hover:bg-gray-800/50" 
-										: "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-								}`}
-							>
-								<Home className="h-4 w-4" />
+						<motion.button
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.95 }}
+							className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+								isDark 
+									? "text-gray-400 hover:text-white hover:bg-gray-800/50" 
+									: "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+							}`}
+						>
+							<Home className="h-4 w-4" />
 								{isAuthenticated ? "Dashboard" : "Home"}
-							</motion.button>
-						</Link>
+						</motion.button>
+					</Link>
 						{!isAuthenticated && (
 							<motion.button
 								whileHover={{ scale: 1.05 }}

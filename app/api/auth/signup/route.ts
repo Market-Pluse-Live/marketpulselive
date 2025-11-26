@@ -1,40 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import crypto from "crypto";
-
-const USERS_FILE = path.join(process.cwd(), "data", "users.json");
-
-interface User {
-	id: string;
-	name: string;
-	email: string;
-	password: string; // hashed
-	avatar?: string;
-	createdAt: string;
-}
-
-interface UsersData {
-	users: User[];
-}
-
-async function getUsers(): Promise<UsersData> {
-	try {
-		const data = await fs.readFile(USERS_FILE, "utf-8");
-		return JSON.parse(data);
-	} catch {
-		// Create the file if it doesn't exist
-		const initial: UsersData = { users: [] };
-		await fs.mkdir(path.dirname(USERS_FILE), { recursive: true });
-		await fs.writeFile(USERS_FILE, JSON.stringify(initial, null, 2));
-		return initial;
-	}
-}
-
-async function saveUsers(data: UsersData): Promise<void> {
-	await fs.mkdir(path.dirname(USERS_FILE), { recursive: true });
-	await fs.writeFile(USERS_FILE, JSON.stringify(data, null, 2));
-}
+import { supabase } from "@/lib/supabase";
 
 function hashPassword(password: string): string {
 	return crypto.createHash("sha256").update(password).digest("hex");
@@ -72,20 +38,13 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Get existing users
-		let usersData: UsersData;
-		try {
-			usersData = await getUsers();
-		} catch (fileError) {
-			console.error("Error reading users file:", fileError);
-			// Initialize with empty users if file doesn't exist
-			usersData = { users: [] };
-		}
+		// Check if email already exists in Supabase
+		const { data: existingUser, error: checkError } = await supabase
+			.from("users")
+			.select("id")
+			.eq("email", email.toLowerCase())
+			.single();
 
-		// Check if email already exists
-		const existingUser = usersData.users.find(
-			(u) => u.email.toLowerCase() === email.toLowerCase()
-		);
 		if (existingUser) {
 			return NextResponse.json(
 				{ error: "An account with this email already exists. Please sign in instead." },
@@ -93,23 +52,32 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Create new user
-		const newUser: User = {
-			id: `user_${crypto.randomBytes(8).toString("hex")}`,
-			name: name.trim(),
-			email: email.toLowerCase().trim(),
-			password: hashPassword(password),
-			createdAt: new Date().toISOString(),
-		};
-
-		usersData.users.push(newUser);
-		
-		try {
-			await saveUsers(usersData);
-		} catch (saveError) {
-			console.error("Error saving user:", saveError);
+		// Only throw error if it's not a "no rows" error
+		if (checkError && checkError.code !== "PGRST116") {
+			console.error("Database check error:", checkError);
 			return NextResponse.json(
-				{ error: "Unable to save account. Please try again." },
+				{ error: "Database error. Please try again." },
+				{ status: 500 }
+			);
+		}
+
+		// Create new user in Supabase
+		const userId = `user_${crypto.randomBytes(8).toString("hex")}`;
+		const { data: newUser, error: insertError } = await supabase
+			.from("users")
+			.insert({
+				id: userId,
+				name: name.trim(),
+				email: email.toLowerCase().trim(),
+				password_hash: hashPassword(password),
+			})
+			.select("id, name, email, avatar, created_at")
+			.single();
+
+		if (insertError) {
+			console.error("Error creating user:", insertError);
+			return NextResponse.json(
+				{ error: "Unable to create account. Please try again." },
 				{ status: 500 }
 			);
 		}
@@ -117,11 +85,15 @@ export async function POST(request: NextRequest) {
 		// Generate token
 		const token = generateToken();
 
-		// Return user without password
-		const { password: _, ...userWithoutPassword } = newUser;
-
+		// Return user
 		return NextResponse.json({
-			user: userWithoutPassword,
+			user: {
+				id: newUser.id,
+				name: newUser.name,
+				email: newUser.email,
+				avatar: newUser.avatar,
+				createdAt: newUser.created_at,
+			},
 			token,
 			message: "Account created successfully",
 		});
@@ -134,4 +106,3 @@ export async function POST(request: NextRequest) {
 		);
 	}
 }
-

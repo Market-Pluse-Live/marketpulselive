@@ -1,4 +1,3 @@
-import { WhopApp } from "@whop/react/components";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "./providers";
@@ -19,6 +18,17 @@ export const metadata: Metadata = {
 	description: "Professional livestream management platform",
 };
 
+// Conditionally import WhopApp only if app ID is set
+const hasWhopAppId = !!process.env.NEXT_PUBLIC_WHOP_APP_ID;
+
+async function WhopWrapper({ children }: { children: React.ReactNode }) {
+	if (hasWhopAppId) {
+		const { WhopApp } = await import("@whop/react/components");
+		return <WhopApp>{children}</WhopApp>;
+	}
+	return <>{children}</>;
+}
+
 export default function RootLayout({
 	children,
 }: Readonly<{
@@ -27,9 +37,9 @@ export default function RootLayout({
 	return (
 		<html lang="en" className="dark" suppressHydrationWarning>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-				<WhopApp>
+				<WhopWrapper>
 					<Providers>{children}</Providers>
-				</WhopApp>
+				</WhopWrapper>
 			</body>
 		</html>
 	);
