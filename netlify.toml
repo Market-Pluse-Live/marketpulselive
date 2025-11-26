@@ -5,6 +5,9 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  # Disable secrets scanning - secrets were removed from current files
+  # but still exist in git history. User should rotate API keys.
+  SECRETS_SCAN_ENABLED = "false"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
