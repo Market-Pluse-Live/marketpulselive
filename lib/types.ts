@@ -31,6 +31,15 @@ export interface UpdateRoomInput {
 	autoStart?: boolean;
 }
 
+export interface CreateRoomInput {
+	name: string;
+	streamUrl: string;
+	streamType: StreamType;
+	isActive?: boolean;
+	thumbnail?: string;
+	autoStart?: boolean;
+}
+
 export interface ActivityLogEntry {
 	id: string;
 	roomId: string;
