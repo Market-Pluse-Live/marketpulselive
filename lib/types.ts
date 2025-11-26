@@ -22,6 +22,15 @@ export interface Room {
 	metrics?: StreamMetrics;
 }
 
+export interface UpdateRoomInput {
+	name?: string;
+	streamUrl?: string;
+	streamType?: StreamType;
+	isActive?: boolean;
+	thumbnail?: string;
+	autoStart?: boolean;
+}
+
 export interface ActivityLogEntry {
 	id: string;
 	roomId: string;
