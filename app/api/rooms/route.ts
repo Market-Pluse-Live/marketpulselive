@@ -1,28 +1,10 @@
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { whopsdk } from "@/lib/whop-sdk";
 import {
 	getRoomsByCompany,
 	createRoom,
 	initializeRoomsForCompany,
 } from "@/lib/db";
 import type { CreateRoomInput } from "@/lib/types";
-
-// Dev mode for local testing without Whop auth
-const DEV_MODE = process.env.NODE_ENV === "development";
-
-async function verifyAccess(companyId: string): Promise<boolean> {
-	if (DEV_MODE) {
-		return true;
-	}
-	try {
-		const { userId } = await whopsdk.verifyUserToken(await headers());
-		await whopsdk.users.checkAccess(companyId, { id: userId });
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 export async function GET(request: Request) {
 	try {
@@ -36,12 +18,6 @@ export async function GET(request: Request) {
 			);
 		}
 
-		// Verify user has access to this company (bypassed in dev mode)
-		const hasAccess = await verifyAccess(companyId);
-		if (!hasAccess) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		// Initialize rooms if they don't exist
 		await initializeRoomsForCompany(companyId);
 
@@ -49,10 +25,11 @@ export async function GET(request: Request) {
 		const rooms = await getRoomsByCompany(companyId);
 
 		return NextResponse.json({ rooms });
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error("Error fetching rooms:", error);
+		const message = error instanceof Error ? error.message : "Failed to fetch rooms";
 		return NextResponse.json(
-			{ error: error.message || "Failed to fetch rooms" },
+			{ error: message },
 			{ status: 500 },
 		);
 	}
@@ -71,12 +48,6 @@ export async function POST(request: Request) {
 			);
 		}
 
-		// Verify user has access to this company (bypassed in dev mode)
-		const hasAccess = await verifyAccess(companyId);
-		if (!hasAccess) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		// Create the room
 		const room = await createRoom(companyId, {
 			name: roomData.name,
@@ -86,10 +57,11 @@ export async function POST(request: Request) {
 		});
 
 		return NextResponse.json({ room }, { status: 201 });
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error("Error creating room:", error);
+		const message = error instanceof Error ? error.message : "Failed to create room";
 		return NextResponse.json(
-			{ error: error.message || "Failed to create room" },
+			{ error: message },
 			{ status: 500 },
 		);
 	}

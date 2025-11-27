@@ -1,24 +1,6 @@
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { whopsdk } from "@/lib/whop-sdk";
 import { getRoomById, updateRoom } from "@/lib/db";
 import type { UpdateRoomInput } from "@/lib/types";
-
-// Dev mode for local testing without Whop auth
-const DEV_MODE = process.env.NODE_ENV === "development";
-
-async function verifyAccess(companyId: string): Promise<boolean> {
-	if (DEV_MODE) {
-		return true;
-	}
-	try {
-		const { userId } = await whopsdk.verifyUserToken(await headers());
-		await whopsdk.users.checkAccess(companyId, { id: userId });
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 export async function GET(
 	request: Request,
@@ -36,12 +18,6 @@ export async function GET(
 			);
 		}
 
-		// Verify user has access to this company (bypassed in dev mode)
-		const hasAccess = await verifyAccess(companyId);
-		if (!hasAccess) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		// Get the room
 		const room = await getRoomById(roomId, companyId);
 
@@ -50,10 +26,11 @@ export async function GET(
 		}
 
 		return NextResponse.json({ room });
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error("Error fetching room:", error);
+		const message = error instanceof Error ? error.message : "Failed to fetch room";
 		return NextResponse.json(
-			{ error: error.message || "Failed to fetch room" },
+			{ error: message },
 			{ status: 500 },
 		);
 	}
@@ -76,12 +53,6 @@ export async function PUT(
 			);
 		}
 
-		// Verify user has access to this company (bypassed in dev mode)
-		const hasAccess = await verifyAccess(companyId);
-		if (!hasAccess) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		// Update the room
 		const room = await updateRoom(roomId, companyId, updates);
 
@@ -90,12 +61,12 @@ export async function PUT(
 		}
 
 		return NextResponse.json({ room });
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error("Error updating room:", error);
+		const message = error instanceof Error ? error.message : "Failed to update room";
 		return NextResponse.json(
-			{ error: error.message || "Failed to update room" },
+			{ error: message },
 			{ status: 500 },
 		);
 	}
 }
-
