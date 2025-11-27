@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 function hashPassword(password: string): string {
 	return crypto.createHash("sha256").update(password).digest("hex");
@@ -36,6 +36,24 @@ export async function POST(request: NextRequest) {
 				{ error: "Invalid email address" },
 				{ status: 400 }
 			);
+		}
+
+		// Check if Supabase is configured
+		if (!isSupabaseConfigured || !supabase) {
+			// In dev mode without Supabase, create a mock user
+			const userId = `dev_${Date.now()}`;
+			const token = generateToken();
+			return NextResponse.json({
+				user: {
+					id: userId,
+					name: name.trim(),
+					email: email.toLowerCase().trim(),
+					avatar: null,
+					createdAt: new Date().toISOString(),
+				},
+				token,
+				message: "Account created successfully (dev mode)",
+			});
 		}
 
 		// Check if email already exists in Supabase

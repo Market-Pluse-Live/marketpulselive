@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 function hashPassword(password: string): string {
 	return crypto.createHash("sha256").update(password).digest("hex");
@@ -21,6 +21,23 @@ export async function POST(request: NextRequest) {
 				{ error: "Email and password are required" },
 				{ status: 400 }
 			);
+		}
+
+		// Check if Supabase is configured
+		if (!isSupabaseConfigured || !supabase) {
+			// In dev mode without Supabase, allow any login
+			const token = generateToken();
+			return NextResponse.json({
+				user: {
+					id: `dev_${Date.now()}`,
+					name: email.split("@")[0],
+					email: email.toLowerCase().trim(),
+					avatar: null,
+					createdAt: new Date().toISOString(),
+				},
+				token,
+				message: "Login successful (dev mode)",
+			});
 		}
 
 		// Find user in Supabase
