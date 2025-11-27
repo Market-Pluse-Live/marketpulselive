@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Tv, Volume2, VolumeX, Maximize2, Radio } from "lucide-react";
+import { Tv, Volume2, VolumeX, Volume1, Maximize2, Radio, Minus, Plus } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import type { Room } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -47,10 +47,15 @@ interface LiveStreamCardProps {
 }
 
 function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
-	const [isMuted, setIsMuted] = useState(true); // Start muted for autoplay
+	const [volume, setVolume] = useState(0); // Start at 0 for autoplay (0-100)
 	const [isHovered, setIsHovered] = useState(false);
+	const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 	const router = useRouter();
 	const iframeRef = useRef<HTMLIFrameElement>(null);
+	const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+	// Derive muted state from volume
+	const isMuted = volume === 0;
 
 	// Extract YouTube video ID
 	const getYouTubeId = (url: string): string | null => {
@@ -83,10 +88,59 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 		}
 	};
 
+	// Volume control functions
+	const increaseVolume = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setVolume(prev => Math.min(100, prev + 10));
+		showVolumeSliderTemporarily();
+	};
+
+	const decreaseVolume = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setVolume(prev => Math.max(0, prev - 10));
+		showVolumeSliderTemporarily();
+	};
+
+	const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+		setVolume(Number(e.target.value));
+	};
+
 	const toggleMute = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		setIsMuted(!isMuted);
+		if (volume === 0) {
+			setVolume(50); // Unmute to 50%
+		} else {
+			setVolume(0); // Mute
+		}
+		showVolumeSliderTemporarily();
 	};
+
+	const showVolumeSliderTemporarily = () => {
+		setShowVolumeSlider(true);
+		if (volumeTimeoutRef.current) {
+			clearTimeout(volumeTimeoutRef.current);
+		}
+		volumeTimeoutRef.current = setTimeout(() => {
+			setShowVolumeSlider(false);
+		}, 3000);
+	};
+
+	// Get volume icon based on level
+	const getVolumeIcon = () => {
+		if (volume === 0) return <VolumeX className="h-5 w-5" />;
+		if (volume < 50) return <Volume1 className="h-5 w-5" />;
+		return <Volume2 className="h-5 w-5" />;
+	};
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (volumeTimeoutRef.current) {
+				clearTimeout(volumeTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	if (!room) {
 		// Empty slot
@@ -139,7 +193,7 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 			) : room.streamType === "hls" ? (
 				<HLSPlayer 
 					streamUrl={room.streamUrl} 
-					isMuted={isMuted} 
+					volume={volume} 
 					roomName={room.name}
 				/>
 			) : (
@@ -173,47 +227,97 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 				</div>
 
 				{/* Bottom bar */}
-				<div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between">
+				<div className="absolute bottom-0 left-0 right-0 p-4">
 					{/* Room name */}
-					<div className="flex-1 min-w-0">
-						<h3 className="text-white text-lg font-semibold truncate">
-							{room.name}
-						</h3>
-						<p className="text-white/60 text-sm uppercase">
-							{room.streamType} stream
-						</p>
+					<div className="flex items-center justify-between mb-3">
+						<div className="flex-1 min-w-0">
+							<h3 className="text-white text-lg font-semibold truncate">
+								{room.name}
+							</h3>
+							<p className="text-white/60 text-sm uppercase">
+								{room.streamType} stream
+							</p>
+						</div>
 					</div>
 					
-					{/* Mute/Unmute button */}
-					<button
-						onClick={toggleMute}
-						className={`p-3 rounded-xl transition-colors ${
-							isMuted 
-								? "bg-white/20 hover:bg-white/30 text-white" 
-								: "bg-green-500 hover:bg-green-600 text-white"
-						}`}
-						title={isMuted ? "Unmute" : "Mute"}
-					>
-						{isMuted ? (
-							<VolumeX className="h-6 w-6" />
-						) : (
-							<Volume2 className="h-6 w-6" />
-						)}
-					</button>
+					{/* Volume Controls */}
+					<div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-xl p-2">
+						{/* Decrease Volume Button */}
+						<button
+							onClick={decreaseVolume}
+							className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+							title="Volume Down"
+						>
+							<Minus className="h-4 w-4" />
+						</button>
+						
+						{/* Mute/Unmute Button */}
+						<button
+							onClick={toggleMute}
+							className={`p-2 rounded-lg transition-colors ${
+								isMuted 
+									? "bg-white/10 hover:bg-white/20 text-white/70" 
+									: "bg-green-500/80 hover:bg-green-500 text-white"
+							}`}
+							title={isMuted ? "Unmute" : "Mute"}
+						>
+							{getVolumeIcon()}
+						</button>
+						
+						{/* Volume Slider */}
+						<div className="flex-1 flex items-center gap-2">
+							<input
+								type="range"
+								min="0"
+								max="100"
+								value={volume}
+								onChange={handleVolumeChange}
+								onClick={(e) => e.stopPropagation()}
+								className="w-full h-2 rounded-full appearance-none cursor-pointer bg-white/20 
+									[&::-webkit-slider-thumb]:appearance-none 
+									[&::-webkit-slider-thumb]:w-4 
+									[&::-webkit-slider-thumb]:h-4 
+									[&::-webkit-slider-thumb]:rounded-full 
+									[&::-webkit-slider-thumb]:bg-white 
+									[&::-webkit-slider-thumb]:shadow-lg
+									[&::-webkit-slider-thumb]:cursor-pointer
+									[&::-webkit-slider-thumb]:transition-transform
+									[&::-webkit-slider-thumb]:hover:scale-110
+									[&::-moz-range-thumb]:w-4 
+									[&::-moz-range-thumb]:h-4 
+									[&::-moz-range-thumb]:rounded-full 
+									[&::-moz-range-thumb]:bg-white 
+									[&::-moz-range-thumb]:border-0
+									[&::-moz-range-thumb]:cursor-pointer"
+								style={{
+									background: `linear-gradient(to right, #22c55e ${volume}%, rgba(255,255,255,0.2) ${volume}%)`
+								}}
+							/>
+							<span className="text-white text-sm font-medium min-w-[3ch] text-right">
+								{volume}
+							</span>
+						</div>
+						
+						{/* Increase Volume Button */}
+						<button
+							onClick={increaseVolume}
+							className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+							title="Volume Up"
+						>
+							<Plus className="h-4 w-4" />
+						</button>
+					</div>
 				</div>
 			</div>
 
-			{/* Persistent mute indicator when not hovered */}
+			{/* Persistent volume indicator when not hovered */}
 			{!isHovered && (
-				<div className="absolute bottom-4 right-4">
-					<div className={`p-2 rounded-xl ${
-						isMuted ? "bg-black/60" : "bg-green-500"
+				<div className="absolute bottom-4 right-4 flex items-center gap-2">
+					<div className={`px-3 py-2 rounded-xl flex items-center gap-2 ${
+						isMuted ? "bg-black/60" : "bg-green-500/90"
 					}`}>
-						{isMuted ? (
-							<VolumeX className="h-5 w-5 text-white" />
-						) : (
-							<Volume2 className="h-5 w-5 text-white" />
-						)}
+						{getVolumeIcon()}
+						<span className="text-white text-sm font-medium">{volume}%</span>
 					</div>
 				</div>
 			)}
@@ -228,8 +332,8 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 	);
 }
 
-// HLS Player Component
-function HLSPlayer({ streamUrl, isMuted, roomName }: { streamUrl: string; isMuted: boolean; roomName: string }) {
+// HLS Player Component with Volume Control
+function HLSPlayer({ streamUrl, volume, roomName }: { streamUrl: string; volume: number; roomName: string }) {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const hlsRef = useRef<any>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -267,11 +371,13 @@ function HLSPlayer({ streamUrl, isMuted, roomName }: { streamUrl: string; isMute
 		}
 	}, [streamUrl]);
 
+	// Update volume (0-100 to 0-1)
 	useEffect(() => {
 		if (videoRef.current) {
-			videoRef.current.muted = isMuted;
+			videoRef.current.volume = volume / 100;
+			videoRef.current.muted = volume === 0;
 		}
-	}, [isMuted]);
+	}, [volume]);
 
 	if (error) {
 		return (
@@ -286,7 +392,7 @@ function HLSPlayer({ streamUrl, isMuted, roomName }: { streamUrl: string; isMute
 			ref={videoRef}
 			autoPlay
 			playsInline
-			muted={isMuted}
+			muted={volume === 0}
 			className="absolute inset-0 w-full h-full object-cover"
 		/>
 	);
