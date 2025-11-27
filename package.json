@@ -4,7 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "whop-proxy --command 'next dev --turbopack'",
+		"dev": "next dev",
+		"dev:whop": "whop-proxy --command 'next dev'",
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome lint"

@@ -1,6 +1,16 @@
-# Whop Next.js App Template
+# Market Pulse Live
 
-A beginner-friendly template for building Whop apps with Next.js, TypeScript, and Tailwind CSS.
+A professional livestream management platform built with Next.js, featuring admin/viewer role separation, real-time stream management, and a beautiful UI.
+
+## 🎯 Features
+
+- **Admin/Viewer Role System** - Separate access levels for managers and viewers
+- **8-Room Stream Management** - Configure and manage up to 8 livestream rooms
+- **4×2 Live Grid** - Beautiful grid layout for active streams
+- **YouTube & HLS Support** - Compatible with YouTube live streams and HLS sources
+- **Real-time Updates** - Auto-polling for live stream status
+- **Dark/Light Theme** - Fully themeable interface
+- **Responsive Design** - Works on desktop and mobile
 
 ## 🚀 Quick Start
 
@@ -10,117 +20,146 @@ A beginner-friendly template for building Whop apps with Next.js, TypeScript, an
 pnpm install
 ```
 
-> **Note:** This project uses `pnpm` as the package manager. If you don't have it installed, you can install it with `npm install -g pnpm` or use `npm install` instead.
-
-### 2. Set Up Your Whop App
-
-1. Go to the [Whop Developer Dashboard](https://whop.com/dashboard/developer/)
-2. Create a new Whop App
-3. Go to the **"Hosting"** section and configure:
-   - **Base URL**: Set to the domain you'll deploy on (for local dev, you can use `http://localhost:3000`)
-   - **App path**: `/experiences/[experienceId]`
-   - **Dashboard path**: `/dashboard/[companyId]`
-   - **Discover path**: `/discover`
-
-### 3. Configure Environment Variables
-
-1. Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-2. Open `.env.local` and fill in your values from the Whop Developer Dashboard:
-   - **NEXT_PUBLIC_WHOP_APP_ID**: Found in your app's settings page
-   - **WHOP_API_KEY**: Found under "API Keys" in your app settings
-   - **WHOP_WEBHOOK_SECRET**: Found under "Webhooks" in your app settings
-
-> ⚠️ **Important:** Never commit `.env.local` to git! It contains your secret keys.
-
-### 4. Add Your App to a Whop
-
-1. Go to a Whop (product) created in the same organization as your app
-2. Navigate to the **"Tools"** section
-3. Click **"Add App"** and select your app
-
-### 5. Run the Development Server
+### 2. Run the Development Server
 
 ```bash
 pnpm dev
 ```
 
-When the server starts:
-1. Look for a translucent settings icon in the top right corner of the window
-2. Click it and select **"localhost"**
-3. The default port `3000` should work
+The app will be available at `http://localhost:3000`
 
-Your app should now be running! 🎉
+### 3. Access the App
+
+When you first access the dashboard, you'll be asked: **"Are you the admin?"**
+
+- **Admin Access**: Enter the admin key to unlock full management features
+- **Viewer Access**: View-only mode to watch live streams
+
+**Default Admin Key:** `mpl-admin-2024`
+
+> ⚠️ **Important:** Change the admin key in `lib/role-context.tsx` before deploying to production!
 
 ## 📁 Project Structure
 
 ```
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes (webhooks, etc.)
-│   ├── dashboard/         # Dashboard pages for companies
-│   ├── experiences/       # Experience pages
-│   ├── discover/          # Discover page
-│   └── layout.tsx         # Root layout with WhopApp wrapper
+├── app/
+│   ├── api/                # API routes
+│   │   ├── rooms/          # Room CRUD endpoints
+│   │   └── auth/           # Authentication endpoints
+│   ├── dashboard/          # Admin dashboard
+│   ├── discover/           # Browse streams page
+│   ├── rooms/              # Stream viewer page
+│   └── layout.tsx          # Root layout
+├── components/
+│   ├── auth/               # Auth components (RoleGate, AuthModal)
+│   ├── dashboard/          # Dashboard components
+│   ├── livestream/         # Stream player components
+│   └── viewer/             # Viewer components
 ├── lib/
-│   └── whop-sdk.ts        # Whop SDK configuration
-├── .env.example           # Environment variables template
-└── .env.local             # Your actual environment variables (not in git)
+│   ├── role-context.tsx    # Admin/Viewer role management
+│   ├── auth-context.tsx    # User authentication
+│   ├── theme-context.tsx   # Theme management
+│   ├── db.ts               # Database operations
+│   └── supabase.ts         # Supabase client
 ```
 
-## 🔐 Authentication
+## 🔐 Role System
 
-Authentication is already set up! The `WhopApp` component in `app/layout.tsx` handles user authentication automatically. In your pages, you can verify users with:
+### Admin Mode
+- Create and edit rooms
+- Configure stream URLs (YouTube/HLS)
+- Activate/deactivate streams
+- Access analytics and settings
+- Full dashboard access
+
+### Viewer Mode
+- View the 4×2 grid of active streams
+- Watch live streams
+- No edit or management capabilities
+
+## 🛠️ Configuration
+
+### Admin Key
+The admin key is set in `lib/role-context.tsx`:
 
 ```typescript
-import { whopsdk } from "@/lib/whop-sdk";
-import { headers } from "next/headers";
-
-const { userId } = await whopsdk.verifyUserToken(await headers());
+const ADMIN_KEY = "mpl-admin-2024";
 ```
 
-## 🚢 Deploying
+Change this to a secure key before deploying.
 
-### Deploy to Vercel (Recommended)
+### Database
+The app supports two storage modes:
+
+1. **Supabase** (Production) - Set these environment variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   ```
+
+2. **In-Memory** (Development) - Works automatically when Supabase isn't configured
+
+### Supabase Table Schema
+
+```sql
+CREATE TABLE rooms (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  stream_url TEXT DEFAULT '',
+  stream_type TEXT DEFAULT 'youtube',
+  is_active BOOLEAN DEFAULT false,
+  company_id TEXT NOT NULL,
+  thumbnail TEXT,
+  auto_start BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## 🚢 Deployment
+
+### Deploy to Netlify
 
 1. Push your code to GitHub
-2. Go to [Vercel](https://vercel.com/new) and import your repository
-3. Add your environment variables from `.env.local` in Vercel's project settings
-4. Deploy!
+2. Connect your repo to Netlify
+3. Set build command: `pnpm run build`
+4. Set publish directory: `.next`
+5. Add environment variables in Netlify settings
+6. Deploy!
 
-### Update Whop Dashboard
+### Environment Variables for Production
 
-After deploying, update your Whop app settings:
-- Update the **Base URL** to your production domain
-- Update **Webhook callback URLs** if needed
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+ADMIN_KEY=your_secure_admin_key
+```
 
-## 🐛 Troubleshooting
+## 📜 Scripts
 
-**App not loading properly?**
-- Make sure the "App path" in your Whop developer dashboard is explicitly set to `/experiences/[experienceId]` (the placeholder text doesn't count!)
-- Verify all environment variables in `.env.local` are correct
+```bash
+pnpm dev        # Start development server
+pnpm dev:whop   # Start with Whop proxy (for Whop integration)
+pnpm build      # Build for production
+pnpm start      # Start production server
+pnpm lint       # Run linter
+```
 
-**Authentication issues?**
-- Double-check your `NEXT_PUBLIC_WHOP_APP_ID` and `WHOP_API_KEY` are correct
-- Make sure your app is added to the Whop you're testing with
+## 🎨 Tech Stack
 
-**Can't connect to localhost?**
-- Make sure you've selected "localhost" in the settings icon (top right)
-- Try a different port if 3000 is already in use
+- **Next.js 16** - React framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **Framer Motion** - Animations
+- **Supabase** - Database (optional)
+- **HLS.js** - HLS stream playback
 
 ## 📚 Learn More
 
-- [Whop Developer Docs](https://dev.whop.com/introduction)
-- [Whop SDK Documentation](https://docs.whop.com)
 - [Next.js Documentation](https://nextjs.org/docs)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Tailwind CSS](https://tailwindcss.com/docs)
 
-## 🎯 Next Steps
+---
 
-1. Customize the pages in `app/` to build your app
-2. Use the Whop SDK to fetch user data, check access, and more
-3. Set up webhooks in `app/api/webhooks/route.ts` to handle events
-4. Style your app with Tailwind CSS (already configured!)
-
-Happy building! 🚀
+Built with ❤️ for Market Pulse Live

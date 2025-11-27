@@ -1,4 +1,3 @@
-import { initializeRoomsForCompany } from "@/lib/db";
 import { DashboardClient } from "./DashboardClient";
 
 export default async function DashboardPage({
@@ -8,13 +7,7 @@ export default async function DashboardPage({
 }) {
 	const { companyId } = await params;
 
-	// Auto-initialize 8 rooms if they don't exist
-	try {
-		await initializeRoomsForCompany(companyId);
-	} catch (error) {
-		console.error("Error initializing rooms:", error);
-		// Continue even if initialization fails - rooms will be empty
-	}
-
+	// Room initialization is now handled client-side in DashboardClient
+	// This prevents server/client hydration mismatches
 	return <DashboardClient companyId={companyId} />;
 }

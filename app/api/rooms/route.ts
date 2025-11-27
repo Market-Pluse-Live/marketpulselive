@@ -6,6 +6,15 @@ import {
 } from "@/lib/db";
 import type { CreateRoomInput } from "@/lib/types";
 
+// Admin key from environment or default (should match role-context.tsx)
+const ADMIN_KEY = process.env.ADMIN_KEY || "mpl-admin-2024";
+
+// Validate admin access from request headers
+function isAdminRequest(request: Request): boolean {
+	const adminKey = request.headers.get("x-admin-key");
+	return adminKey === ADMIN_KEY;
+}
+
 export async function GET(request: Request) {
 	try {
 		const { searchParams } = new URL(request.url);
@@ -37,6 +46,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
 	try {
+		// Check admin access
+		if (!isAdminRequest(request)) {
+			return NextResponse.json(
+				{ error: "Admin access required" },
+				{ status: 403 },
+			);
+		}
+
 		const body: CreateRoomInput & { companyId: string } =
 			await request.json();
 		const { companyId, ...roomData } = body;

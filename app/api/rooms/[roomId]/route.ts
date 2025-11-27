@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { getRoomById, updateRoom } from "@/lib/db";
 import type { UpdateRoomInput } from "@/lib/types";
 
+// Admin key from environment or default (should match role-context.tsx)
+const ADMIN_KEY = process.env.ADMIN_KEY || "mpl-admin-2024";
+
+// Validate admin access from request headers
+function isAdminRequest(request: Request): boolean {
+	const adminKey = request.headers.get("x-admin-key");
+	return adminKey === ADMIN_KEY;
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ roomId: string }> },
@@ -41,6 +50,14 @@ export async function PUT(
 	{ params }: { params: Promise<{ roomId: string }> },
 ) {
 	try {
+		// Check admin access
+		if (!isAdminRequest(request)) {
+			return NextResponse.json(
+				{ error: "Admin access required" },
+				{ status: 403 },
+			);
+		}
+
 		const { roomId } = await params;
 		const body: UpdateRoomInput & { companyId: string } =
 			await request.json();

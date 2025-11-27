@@ -6,11 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuth } from "@/lib/auth-context";
+import { useRole } from "@/lib/role-context";
 
 const navItems = [
 	{ href: "/dashboard/dev-company", label: "Dashboard", icon: "📊" },
 	{ href: "/discover", label: "Browse Streams", icon: "📺" },
-	{ href: "/analytics", label: "Analytics", icon: "📈" },
+	{ href: "/analytics", label: "Analytics", icon: "📈", adminOnly: true },
 ];
 
 interface UserProfile {
@@ -24,6 +25,7 @@ export function Navbar() {
 	const router = useRouter();
 	const { theme, toggleTheme } = useTheme();
 	const { logout, user } = useAuth();
+	const { isAdmin, resetRole } = useRole();
 	const [showUserMenu, setShowUserMenu] = useState(false);
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [notifications, setNotifications] = useState<Array<{
@@ -32,6 +34,9 @@ export function Navbar() {
 		time: string;
 		read: boolean;
 	}>>([]);
+
+	// Filter nav items based on role
+	const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
 	// Use real user data from auth context
 	const userProfile: UserProfile = {
@@ -135,7 +140,7 @@ export function Navbar() {
 
 					{/* Nav Links */}
 					<div className="hidden md:flex items-center gap-1">
-						{navItems.map((item, index) => {
+						{filteredNavItems.map((item, index) => {
 							const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 							return (
 								<motion.div
@@ -169,6 +174,17 @@ export function Navbar() {
 								</motion.div>
 							);
 						})}
+
+						{/* Admin Badge */}
+						{isAdmin && (
+							<motion.div
+								initial={{ opacity: 0, scale: 0.9 }}
+								animate={{ opacity: 1, scale: 1 }}
+								className="ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30"
+							>
+								<span className="text-xs font-semibold text-purple-400">🛡️ Admin</span>
+							</motion.div>
+						)}
 					</div>
 
 					{/* Right Side */}
@@ -313,18 +329,33 @@ export function Navbar() {
 													👤 Profile
 												</button>
 											</Link>
-											<Link href="/settings">
-												<button
-													className={`w-full px-4 py-2 text-left text-sm transition-colors ${
-														theme === 'dark'
-															? "text-gray-300 hover:bg-gray-800"
-															: "text-gray-700 hover:bg-gray-100"
-													}`}
-													onClick={() => setShowUserMenu(false)}
-												>
-													⚙️ Settings
-												</button>
-											</Link>
+											{isAdmin && (
+												<Link href="/settings">
+													<button
+														className={`w-full px-4 py-2 text-left text-sm transition-colors ${
+															theme === 'dark'
+																? "text-gray-300 hover:bg-gray-800"
+																: "text-gray-700 hover:bg-gray-100"
+														}`}
+														onClick={() => setShowUserMenu(false)}
+													>
+														⚙️ Settings
+													</button>
+												</Link>
+											)}
+											<button
+												className={`w-full px-4 py-2 text-left text-sm transition-colors ${
+													theme === 'dark'
+														? "text-amber-400 hover:bg-gray-800"
+														: "text-amber-600 hover:bg-gray-100"
+												}`}
+												onClick={() => {
+													setShowUserMenu(false);
+													resetRole();
+												}}
+											>
+												🔄 Switch Role
+											</button>
 											<button
 												className={`w-full px-4 py-2 text-left text-sm transition-colors ${
 													theme === 'dark'
