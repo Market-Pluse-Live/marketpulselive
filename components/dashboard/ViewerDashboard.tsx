@@ -21,10 +21,15 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 
 	const loadRooms = useCallback(async () => {
 		try {
+			console.log("ViewerDashboard: Fetching rooms for companyId:", companyId);
 			const response = await fetch(`/api/rooms?companyId=${companyId}`);
 			if (response.ok) {
 				const data = await response.json();
+				console.log("ViewerDashboard: Received rooms:", data.rooms);
+				console.log("ViewerDashboard: Active rooms:", data.rooms?.filter((r: Room) => r.isActive && r.streamUrl));
 				setRooms(data.rooms || []);
+			} else {
+				console.error("ViewerDashboard: API returned error:", response.status);
 			}
 		} catch (err) {
 			console.error("Failed to load rooms:", err);

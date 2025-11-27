@@ -70,7 +70,9 @@ export async function getRooms(): Promise<Room[]> {
 // Get rooms by company ID
 export async function getRoomsByCompany(companyId: string): Promise<Room[]> {
 	if (shouldUseInMemory()) {
-		return inMemoryRooms.get(companyId) || [];
+		const rooms = inMemoryRooms.get(companyId) || [];
+		console.log("[DB] getRoomsByCompany (in-memory):", companyId, "- found", rooms.length, "rooms");
+		return rooms;
 	}
 
 	try {

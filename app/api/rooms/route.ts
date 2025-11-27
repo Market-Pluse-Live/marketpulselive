@@ -20,6 +20,8 @@ export async function GET(request: Request) {
 		const { searchParams } = new URL(request.url);
 		const companyId = searchParams.get("companyId");
 
+		console.log("[API GET /rooms] Fetching rooms for companyId:", companyId);
+
 		if (!companyId) {
 			return NextResponse.json(
 				{ error: "companyId is required" },
@@ -32,6 +34,9 @@ export async function GET(request: Request) {
 
 		// Get rooms for this company
 		const rooms = await getRoomsByCompany(companyId);
+
+		console.log("[API GET /rooms] Returning", rooms.length, "rooms");
+		console.log("[API GET /rooms] Active rooms:", rooms.filter(r => r.isActive && r.streamUrl).length);
 
 		return NextResponse.json({ rooms });
 	} catch (error: unknown) {
