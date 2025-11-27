@@ -1,4 +1,4 @@
-export type StreamType = "youtube" | "hls";
+export type StreamType = "youtube" | "hls" | "embed";
 
 export type RoomStatus = "live" | "active" | "configured" | "inactive" | "error";
 
