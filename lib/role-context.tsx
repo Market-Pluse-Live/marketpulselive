@@ -21,26 +21,22 @@ interface RoleContextType {
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
-const ROLE_STORAGE_KEY = "mpl-user-role";
-
 export function RoleProvider({ children }: { children: ReactNode }) {
+	// Always start with null role - user must select every session
 	const [role, setRole] = useState<UserRole>(null);
 	const [isRoleLoading, setIsRoleLoading] = useState(true);
 
-	// Load role from localStorage on mount
+	// Clear any stored role and set loading to false on mount
 	useEffect(() => {
-		try {
-			if (typeof window !== "undefined") {
-				const storedRole = localStorage.getItem(ROLE_STORAGE_KEY) as UserRole;
-				if (storedRole === "admin" || storedRole === "viewer") {
-					setRole(storedRole);
-				}
-			}
-		} catch (error) {
-			console.warn("Role check failed:", error);
-		} finally {
-			setIsRoleLoading(false);
+		// Clear any previously stored role
+		if (typeof window !== "undefined") {
+			localStorage.removeItem("mpl-user-role");
 		}
+		// Small delay to prevent flash
+		const timer = setTimeout(() => {
+			setIsRoleLoading(false);
+		}, 100);
+		return () => clearTimeout(timer);
 	}, []);
 
 	// Verify admin key
@@ -48,32 +44,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 		return key === ADMIN_KEY;
 	};
 
-	// Set role as viewer
+	// Set role as viewer (session only - no localStorage)
 	const setAsViewer = () => {
 		setRole("viewer");
-		if (typeof window !== "undefined") {
-			localStorage.setItem(ROLE_STORAGE_KEY, "viewer");
-		}
 	};
 
-	// Set role as admin (requires key verification)
+	// Set role as admin (requires key verification, session only)
 	const setAsAdmin = (key: string): boolean => {
 		if (verifyAdminKey(key)) {
 			setRole("admin");
-			if (typeof window !== "undefined") {
-				localStorage.setItem(ROLE_STORAGE_KEY, "admin");
-			}
 			return true;
 		}
 		return false;
 	};
 
-	// Reset role (logout from role)
+	// Reset role (go back to selection screen)
 	const resetRole = () => {
 		setRole(null);
-		if (typeof window !== "undefined") {
-			localStorage.removeItem(ROLE_STORAGE_KEY);
-		}
 	};
 
 	return (
@@ -107,4 +94,3 @@ export function useRole() {
 export function validateAdminKey(key: string | null): boolean {
 	return key === ADMIN_KEY;
 }
-

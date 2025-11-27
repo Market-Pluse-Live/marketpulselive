@@ -85,21 +85,21 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
-					className="flex items-center justify-between mb-6"
+					className="flex items-center justify-between mb-4"
 				>
 					<div className="flex items-center gap-3">
-						<div className="p-2.5 rounded-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 border border-red-500/20">
-							<Tv className="h-5 w-5 text-red-400" />
+						<div className="p-2 rounded-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 border border-red-500/20">
+							<Tv className="h-4 w-4 text-red-400" />
 						</div>
 						<div>
-							<h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+							<h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
 								Live Streams
 							</h2>
-							<p className={`text-sm ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+							<p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
 								{liveCount > 0 ? (
 									<span className="flex items-center gap-1.5">
-										<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-										{liveCount} stream{liveCount !== 1 ? "s" : ""} currently live
+										<span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+										{liveCount} stream{liveCount !== 1 ? "s" : ""} live • Hover for controls • Click to expand
 									</span>
 								) : (
 									"No streams currently live"
@@ -109,14 +109,14 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					</div>
 					
 					{liveCount > 0 && (
-						<div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20">
-							<Radio className="h-4 w-4 text-red-400 animate-pulse" />
-							<span className="text-sm font-medium text-red-300">Live Now</span>
+						<div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
+							<Radio className="h-3 w-3 text-red-400 animate-pulse" />
+							<span className="text-xs font-medium text-red-300">Live Now</span>
 						</div>
 					)}
 				</motion.div>
 
-				{/* 4×2 Grid of Streams */}
+				{/* 4×2 Grid of Embedded Streams */}
 				<ViewerLiveGrid rooms={rooms} />
 
 				{/* No streams message */}
