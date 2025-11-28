@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Tv, Volume2, VolumeX, Volume1, Maximize2, Radio, Minus, Plus } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
@@ -27,7 +27,7 @@ export function ViewerLiveGrid({ rooms }: ViewerLiveGridProps) {
 	}
 
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 			{slots.map((room, index) => (
 				<LiveStreamCard
 					key={room?.id || `empty-${index}`}
@@ -48,14 +48,24 @@ interface LiveStreamCardProps {
 
 function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 	const [volume, setVolume] = useState(0); // Start at 0 for autoplay (0-100)
-	const [isHovered, setIsHovered] = useState(false);
-	const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+	const [showControls, setShowControls] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
+	const [playerReady, setPlayerReady] = useState(false);
 	const router = useRouter();
 	const iframeRef = useRef<HTMLIFrameElement>(null);
-	const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const playerRef = useRef<any>(null);
+	const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
-	// Derive muted state from volume
-	const isMuted = volume === 0;
+	// Detect mobile device
+	useEffect(() => {
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+		};
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+		return () => window.removeEventListener('resize', checkMobile);
+	}, []);
 
 	// Extract YouTube video ID
 	const getYouTubeId = (url: string): string | null => {
@@ -82,65 +92,126 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 		return null;
 	};
 
-	const handleExpand = () => {
+	const handleExpand = useCallback(() => {
 		if (room) {
 			router.push(`/rooms/${room.id}?companyId=${room.companyId}`);
 		}
-	};
+	}, [room, router]);
 
-	// Volume control functions
-	const increaseVolume = (e: React.MouseEvent) => {
+	// Send command to YouTube iframe using postMessage API
+	const sendYouTubeCommand = useCallback((command: string, args?: any) => {
+		if (iframeRef.current && iframeRef.current.contentWindow) {
+			const message = JSON.stringify({
+				event: 'command',
+				func: command,
+				args: args || []
+			});
+			iframeRef.current.contentWindow.postMessage(message, '*');
+		}
+	}, []);
+
+	// Volume control using YouTube API (without reloading iframe)
+	useEffect(() => {
+		if (room?.streamType === "youtube" && playerReady) {
+			if (volume === 0) {
+				sendYouTubeCommand('mute');
+			} else {
+				sendYouTubeCommand('unMute');
+				sendYouTubeCommand('setVolume', [volume]);
+			}
+		}
+	}, [volume, playerReady, room?.streamType, sendYouTubeCommand]);
+
+	// Listen for YouTube player ready
+	useEffect(() => {
+		const handleMessage = (event: MessageEvent) => {
+			try {
+				const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+				if (data.event === 'onReady' || data.info?.playerState !== undefined) {
+					setPlayerReady(true);
+				}
+			} catch {
+				// Ignore non-JSON messages
+			}
+		};
+
+		window.addEventListener('message', handleMessage);
+		return () => window.removeEventListener('message', handleMessage);
+	}, []);
+
+	// Volume control functions with touch support
+	const increaseVolume = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+		e.preventDefault();
 		e.stopPropagation();
 		setVolume(prev => Math.min(100, prev + 10));
-		showVolumeSliderTemporarily();
-	};
+		showControlsTemporarily();
+	}, []);
 
-	const decreaseVolume = (e: React.MouseEvent) => {
+	const decreaseVolume = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+		e.preventDefault();
 		e.stopPropagation();
 		setVolume(prev => Math.max(0, prev - 10));
-		showVolumeSliderTemporarily();
-	};
+		showControlsTemporarily();
+	}, []);
 
-	const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
 		e.stopPropagation();
 		setVolume(Number(e.target.value));
-	};
+	}, []);
 
-	const toggleMute = (e: React.MouseEvent) => {
+	const toggleMute = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+		e.preventDefault();
 		e.stopPropagation();
 		if (volume === 0) {
 			setVolume(50); // Unmute to 50%
 		} else {
 			setVolume(0); // Mute
 		}
-		showVolumeSliderTemporarily();
-	};
+		showControlsTemporarily();
+	}, [volume]);
 
-	const showVolumeSliderTemporarily = () => {
-		setShowVolumeSlider(true);
-		if (volumeTimeoutRef.current) {
-			clearTimeout(volumeTimeoutRef.current);
+	const showControlsTemporarily = useCallback(() => {
+		setShowControls(true);
+		if (controlsTimeoutRef.current) {
+			clearTimeout(controlsTimeoutRef.current);
 		}
-		volumeTimeoutRef.current = setTimeout(() => {
-			setShowVolumeSlider(false);
-		}, 3000);
-	};
+		controlsTimeoutRef.current = setTimeout(() => {
+			if (!isMobile) {
+				setShowControls(false);
+			}
+		}, 4000);
+	}, [isMobile]);
+
+	// Handle tap on mobile to show controls
+	const handleContainerTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+		if (isMobile) {
+			e.preventDefault();
+			showControlsTemporarily();
+		}
+	}, [isMobile, showControlsTemporarily]);
 
 	// Get volume icon based on level
-	const getVolumeIcon = () => {
-		if (volume === 0) return <VolumeX className="h-5 w-5" />;
-		if (volume < 50) return <Volume1 className="h-5 w-5" />;
-		return <Volume2 className="h-5 w-5" />;
+	const getVolumeIcon = (size: string = "h-5 w-5") => {
+		if (volume === 0) return <VolumeX className={size} />;
+		if (volume < 50) return <Volume1 className={size} />;
+		return <Volume2 className={size} />;
 	};
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
 		return () => {
-			if (volumeTimeoutRef.current) {
-				clearTimeout(volumeTimeoutRef.current);
+			if (controlsTimeoutRef.current) {
+				clearTimeout(controlsTimeoutRef.current);
 			}
 		};
 	}, []);
+
+	// Show controls on mobile by default
+	useEffect(() => {
+		if (isMobile) {
+			setShowControls(true);
+		}
+	}, [isMobile]);
 
 	if (!room) {
 		// Empty slot
@@ -149,15 +220,15 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 				initial={{ opacity: 0, scale: 0.95 }}
 				animate={{ opacity: 1, scale: 1 }}
 				transition={{ delay: index * 0.05 }}
-				className={`aspect-video rounded-2xl border-2 border-dashed flex items-center justify-center ${
+				className={`aspect-video rounded-xl sm:rounded-2xl border-2 border-dashed flex items-center justify-center ${
 					isDark 
 						? "bg-gray-900/30 border-gray-800" 
 						: "bg-gray-50 border-gray-200"
 				}`}
 			>
 				<div className="text-center">
-					<Tv className={`h-10 w-10 mx-auto mb-2 ${isDark ? "text-gray-700" : "text-gray-300"}`} />
-					<p className={`text-sm ${isDark ? "text-gray-600" : "text-gray-400"}`}>
+					<Tv className={`h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 ${isDark ? "text-gray-700" : "text-gray-300"}`} />
+					<p className={`text-xs sm:text-sm ${isDark ? "text-gray-600" : "text-gray-400"}`}>
 						No Stream
 					</p>
 				</div>
@@ -166,25 +237,29 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 	}
 
 	const videoId = room.streamType === "youtube" ? getYouTubeId(room.streamUrl) : null;
+	const isMuted = volume === 0;
 
 	return (
 		<motion.div
+			ref={containerRef}
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ delay: index * 0.05 }}
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
-			className={`relative aspect-video rounded-2xl overflow-hidden group ${
+			onMouseEnter={() => !isMobile && setShowControls(true)}
+			onMouseLeave={() => !isMobile && setShowControls(false)}
+			onClick={handleContainerTap}
+			onTouchStart={handleContainerTap}
+			className={`relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden ${
 				isDark 
 					? "bg-gray-900 border border-gray-800" 
 					: "bg-white border border-gray-200"
 			} shadow-xl`}
 		>
-			{/* Embedded Player */}
+			{/* Embedded Player - Always starts muted for autoplay compliance */}
 			{room.streamType === "youtube" && videoId ? (
 				<iframe
 					ref={iframeRef}
-					src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`}
+					src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
 					title={room.name}
 					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 					allowFullScreen
@@ -204,68 +279,73 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 				</div>
 			)}
 
-			{/* Overlay Controls - Always visible on hover */}
-			<div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-200 ${
-				isHovered ? "opacity-100" : "opacity-0"
-			}`}>
+			{/* Overlay Controls */}
+			<div 
+				className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300 ${
+					showControls || isMobile ? "opacity-100" : "opacity-0"
+				}`}
+			>
 				{/* Top bar */}
-				<div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between">
+				<div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center justify-between">
 					{/* Live badge */}
-					<div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
-						<Radio className="h-3 w-3 animate-pulse" />
-						LIVE
+					<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
+						<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
+						<span className="text-[10px] sm:text-xs">LIVE</span>
 					</div>
 					
 					{/* Expand button */}
 					<button
-						onClick={handleExpand}
-						className="p-2.5 rounded-xl bg-black/50 hover:bg-black/70 text-white transition-colors"
+						onClick={(e) => { e.stopPropagation(); handleExpand(); }}
+						onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleExpand(); }}
+						className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-black/50 active:bg-black/70 text-white transition-colors touch-manipulation"
 						title="Open fullscreen"
 					>
-						<Maximize2 className="h-5 w-5" />
+						<Maximize2 className="h-4 w-4 sm:h-5 sm:w-5" />
 					</button>
 				</div>
 
 				{/* Bottom bar */}
-				<div className="absolute bottom-0 left-0 right-0 p-4">
+				<div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4">
 					{/* Room name */}
-					<div className="flex items-center justify-between mb-3">
+					<div className="flex items-center justify-between mb-2 sm:mb-3">
 						<div className="flex-1 min-w-0">
-							<h3 className="text-white text-lg font-semibold truncate">
+							<h3 className="text-white text-sm sm:text-lg font-semibold truncate">
 								{room.name}
 							</h3>
-							<p className="text-white/60 text-sm uppercase">
+							<p className="text-white/60 text-xs sm:text-sm uppercase hidden sm:block">
 								{room.streamType} stream
 							</p>
 						</div>
 					</div>
 					
-					{/* Volume Controls */}
-					<div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-xl p-2">
+					{/* Volume Controls - Mobile Optimized */}
+					<div className="flex items-center gap-1.5 sm:gap-2 bg-black/50 backdrop-blur-sm rounded-lg sm:rounded-xl p-1.5 sm:p-2">
 						{/* Decrease Volume Button */}
 						<button
 							onClick={decreaseVolume}
-							className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+							onTouchEnd={decreaseVolume}
+							className="p-2.5 sm:p-2 rounded-lg bg-white/10 active:bg-white/30 text-white transition-colors touch-manipulation min-w-[40px] min-h-[40px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
 							title="Volume Down"
 						>
-							<Minus className="h-4 w-4" />
+							<Minus className="h-5 w-5 sm:h-4 sm:w-4" />
 						</button>
 						
 						{/* Mute/Unmute Button */}
 						<button
 							onClick={toggleMute}
-							className={`p-2 rounded-lg transition-colors ${
+							onTouchEnd={toggleMute}
+							className={`p-2.5 sm:p-2 rounded-lg transition-colors touch-manipulation min-w-[40px] min-h-[40px] sm:min-w-0 sm:min-h-0 flex items-center justify-center ${
 								isMuted 
-									? "bg-white/10 hover:bg-white/20 text-white/70" 
-									: "bg-green-500/80 hover:bg-green-500 text-white"
+									? "bg-white/10 active:bg-white/30 text-white/70" 
+									: "bg-green-500/80 active:bg-green-600 text-white"
 							}`}
 							title={isMuted ? "Unmute" : "Mute"}
 						>
-							{getVolumeIcon()}
+							{getVolumeIcon("h-5 w-5 sm:h-5 sm:w-5")}
 						</button>
 						
 						{/* Volume Slider */}
-						<div className="flex-1 flex items-center gap-2">
+						<div className="flex-1 flex items-center gap-2 px-1">
 							<input
 								type="range"
 								min="0"
@@ -273,18 +353,21 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 								value={volume}
 								onChange={handleVolumeChange}
 								onClick={(e) => e.stopPropagation()}
-								className="w-full h-2 rounded-full appearance-none cursor-pointer bg-white/20 
+								onTouchStart={(e) => e.stopPropagation()}
+								className="w-full h-3 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/20 touch-manipulation
 									[&::-webkit-slider-thumb]:appearance-none 
-									[&::-webkit-slider-thumb]:w-4 
-									[&::-webkit-slider-thumb]:h-4 
+									[&::-webkit-slider-thumb]:w-6 
+									[&::-webkit-slider-thumb]:h-6 
+									[&::-webkit-slider-thumb]:sm:w-4 
+									[&::-webkit-slider-thumb]:sm:h-4 
 									[&::-webkit-slider-thumb]:rounded-full 
 									[&::-webkit-slider-thumb]:bg-white 
 									[&::-webkit-slider-thumb]:shadow-lg
 									[&::-webkit-slider-thumb]:cursor-pointer
-									[&::-webkit-slider-thumb]:transition-transform
-									[&::-webkit-slider-thumb]:hover:scale-110
-									[&::-moz-range-thumb]:w-4 
-									[&::-moz-range-thumb]:h-4 
+									[&::-moz-range-thumb]:w-6 
+									[&::-moz-range-thumb]:h-6
+									[&::-moz-range-thumb]:sm:w-4 
+									[&::-moz-range-thumb]:sm:h-4 
 									[&::-moz-range-thumb]:rounded-full 
 									[&::-moz-range-thumb]:bg-white 
 									[&::-moz-range-thumb]:border-0
@@ -293,41 +376,42 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 									background: `linear-gradient(to right, #22c55e ${volume}%, rgba(255,255,255,0.2) ${volume}%)`
 								}}
 							/>
-							<span className="text-white text-sm font-medium min-w-[3ch] text-right">
-								{volume}
+							<span className="text-white text-xs sm:text-sm font-medium min-w-[32px] sm:min-w-[3ch] text-right">
+								{volume}%
 							</span>
 						</div>
 						
 						{/* Increase Volume Button */}
 						<button
 							onClick={increaseVolume}
-							className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+							onTouchEnd={increaseVolume}
+							className="p-2.5 sm:p-2 rounded-lg bg-white/10 active:bg-white/30 text-white transition-colors touch-manipulation min-w-[40px] min-h-[40px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
 							title="Volume Up"
 						>
-							<Plus className="h-4 w-4" />
+							<Plus className="h-5 w-5 sm:h-4 sm:w-4" />
 						</button>
 					</div>
 				</div>
 			</div>
 
-			{/* Persistent volume indicator when not hovered */}
-			{!isHovered && (
-				<div className="absolute bottom-4 right-4 flex items-center gap-2">
-					<div className={`px-3 py-2 rounded-xl flex items-center gap-2 ${
+			{/* Persistent volume indicator when controls hidden (desktop only) */}
+			{!showControls && !isMobile && (
+				<div className="absolute bottom-3 right-3 flex items-center gap-2">
+					<div className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
 						isMuted ? "bg-black/60" : "bg-green-500/90"
 					}`}>
-						{getVolumeIcon()}
-						<span className="text-white text-sm font-medium">{volume}%</span>
+						{getVolumeIcon("h-4 w-4")}
+						<span className="text-white text-xs font-medium">{volume}%</span>
 					</div>
 				</div>
 			)}
 
-			{/* Click overlay for expand */}
-			<div 
-				onClick={handleExpand}
-				className="absolute inset-0 cursor-pointer"
-				style={{ pointerEvents: isHovered ? 'none' : 'auto' }}
-			/>
+			{/* Tap hint for mobile (shows briefly) */}
+			{isMobile && !showControls && (
+				<div className="absolute inset-0 flex items-center justify-center bg-black/30">
+					<p className="text-white text-sm">Tap for controls</p>
+				</div>
+			)}
 		</motion.div>
 	);
 }
