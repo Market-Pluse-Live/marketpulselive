@@ -7,6 +7,64 @@ import { useTheme } from "@/lib/theme-context";
 import type { Room } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
+// Declare YouTube types
+declare global {
+	interface Window {
+		YT: {
+			Player: new (elementId: string, config: any) => YTPlayer;
+			PlayerState: {
+				PLAYING: number;
+				PAUSED: number;
+				BUFFERING: number;
+				ENDED: number;
+			};
+		};
+		onYouTubeIframeAPIReady: () => void;
+	}
+}
+
+interface YTPlayer {
+	playVideo: () => void;
+	pauseVideo: () => void;
+	mute: () => void;
+	unMute: () => void;
+	isMuted: () => boolean;
+	setVolume: (volume: number) => void;
+	getVolume: () => number;
+	getPlayerState: () => number;
+	destroy: () => void;
+}
+
+// Track if YouTube API is loaded
+let ytApiLoaded = false;
+let ytApiCallbacks: (() => void)[] = [];
+
+// Load YouTube IFrame API
+function loadYouTubeAPI(): Promise<void> {
+	return new Promise((resolve) => {
+		if (ytApiLoaded && window.YT) {
+			resolve();
+			return;
+		}
+
+		ytApiCallbacks.push(resolve);
+
+		if (!document.getElementById('youtube-iframe-api')) {
+			const tag = document.createElement('script');
+			tag.id = 'youtube-iframe-api';
+			tag.src = 'https://www.youtube.com/iframe_api';
+			const firstScriptTag = document.getElementsByTagName('script')[0];
+			firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+			window.onYouTubeIframeAPIReady = () => {
+				ytApiLoaded = true;
+				ytApiCallbacks.forEach(cb => cb());
+				ytApiCallbacks = [];
+			};
+		}
+	});
+}
+
 interface ViewerLiveGridProps {
 	rooms: Room[];
 }
@@ -52,8 +110,8 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 	const [isMobile, setIsMobile] = useState(false);
 	const [playerReady, setPlayerReady] = useState(false);
 	const router = useRouter();
-	const iframeRef = useRef<HTMLIFrameElement>(null);
-	const playerRef = useRef<any>(null);
+	const playerRef = useRef<YTPlayer | null>(null);
+	const playerContainerId = useRef(`yt-player-${room?.id || index}-${Date.now()}`);
 	const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -92,52 +150,107 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 		return null;
 	};
 
+	const videoId = room?.streamType === "youtube" ? getYouTubeId(room.streamUrl) : null;
+
+	// Initialize YouTube Player
+	useEffect(() => {
+		if (!videoId || room?.streamType !== "youtube") return;
+
+		let mounted = true;
+
+		const initPlayer = async () => {
+			await loadYouTubeAPI();
+			
+			if (!mounted || !window.YT) return;
+
+			// Wait for container to be in DOM
+			const checkContainer = () => {
+				const container = document.getElementById(playerContainerId.current);
+				if (container && mounted) {
+					try {
+						playerRef.current = new window.YT.Player(playerContainerId.current, {
+							videoId: videoId,
+							playerVars: {
+								autoplay: 1,
+								mute: 1, // Start muted for autoplay
+								controls: 0,
+								rel: 0,
+								modestbranding: 1,
+								playsinline: 1,
+								enablejsapi: 1,
+								origin: window.location.origin,
+							},
+							events: {
+								onReady: () => {
+									if (mounted) {
+										setPlayerReady(true);
+										// Apply current volume setting
+										if (playerRef.current) {
+											if (volume === 0) {
+												playerRef.current.mute();
+											} else {
+												playerRef.current.unMute();
+												playerRef.current.setVolume(volume);
+											}
+										}
+									}
+								},
+								onStateChange: (event: any) => {
+									// Player state changed
+									console.log('Player state:', event.data);
+								},
+								onError: (event: any) => {
+									console.error('YouTube Player Error:', event.data);
+								}
+							}
+						});
+					} catch (err) {
+						console.error('Error creating YouTube player:', err);
+					}
+				} else if (mounted) {
+					setTimeout(checkContainer, 100);
+				}
+			};
+
+			checkContainer();
+		};
+
+		initPlayer();
+
+		return () => {
+			mounted = false;
+			if (playerRef.current) {
+				try {
+					playerRef.current.destroy();
+				} catch (e) {
+					// Ignore destroy errors
+				}
+				playerRef.current = null;
+			}
+		};
+	}, [videoId, room?.streamType]);
+
+	// Update volume when it changes
+	useEffect(() => {
+		if (playerReady && playerRef.current) {
+			try {
+				if (volume === 0) {
+					playerRef.current.mute();
+				} else {
+					playerRef.current.unMute();
+					playerRef.current.setVolume(volume);
+				}
+			} catch (e) {
+				console.error('Error setting volume:', e);
+			}
+		}
+	}, [volume, playerReady]);
+
 	const handleExpand = useCallback(() => {
 		if (room) {
 			router.push(`/rooms/${room.id}?companyId=${room.companyId}`);
 		}
 	}, [room, router]);
-
-	// Send command to YouTube iframe using postMessage API
-	const sendYouTubeCommand = useCallback((command: string, args?: any) => {
-		if (iframeRef.current && iframeRef.current.contentWindow) {
-			const message = JSON.stringify({
-				event: 'command',
-				func: command,
-				args: args || []
-			});
-			iframeRef.current.contentWindow.postMessage(message, '*');
-		}
-	}, []);
-
-	// Volume control using YouTube API (without reloading iframe)
-	useEffect(() => {
-		if (room?.streamType === "youtube" && playerReady) {
-			if (volume === 0) {
-				sendYouTubeCommand('mute');
-			} else {
-				sendYouTubeCommand('unMute');
-				sendYouTubeCommand('setVolume', [volume]);
-			}
-		}
-	}, [volume, playerReady, room?.streamType, sendYouTubeCommand]);
-
-	// Listen for YouTube player ready
-	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			try {
-				const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-				if (data.event === 'onReady' || data.info?.playerState !== undefined) {
-					setPlayerReady(true);
-				}
-			} catch {
-				// Ignore non-JSON messages
-			}
-		};
-
-		window.addEventListener('message', handleMessage);
-		return () => window.removeEventListener('message', handleMessage);
-	}, []);
 
 	// Volume control functions with touch support
 	const increaseVolume = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -236,7 +349,6 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 		);
 	}
 
-	const videoId = room.streamType === "youtube" ? getYouTubeId(room.streamUrl) : null;
 	const isMuted = volume === 0;
 
 	return (
@@ -255,14 +367,10 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 					: "bg-white border border-gray-200"
 			} shadow-xl`}
 		>
-			{/* Embedded Player - Always starts muted for autoplay compliance */}
+			{/* YouTube Player Container */}
 			{room.streamType === "youtube" && videoId ? (
-				<iframe
-					ref={iframeRef}
-					src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-					title={room.name}
-					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-					allowFullScreen
+				<div 
+					id={playerContainerId.current}
 					className="absolute inset-0 w-full h-full"
 				/>
 			) : room.streamType === "hls" ? (
@@ -281,12 +389,12 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 
 			{/* Overlay Controls */}
 			<div 
-				className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300 ${
+				className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300 pointer-events-none ${
 					showControls || isMobile ? "opacity-100" : "opacity-0"
 				}`}
 			>
 				{/* Top bar */}
-				<div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center justify-between">
+				<div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center justify-between pointer-events-auto">
 					{/* Live badge */}
 					<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
 						<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
@@ -305,7 +413,7 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 				</div>
 
 				{/* Bottom bar */}
-				<div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4">
+				<div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 pointer-events-auto">
 					{/* Room name */}
 					<div className="flex items-center justify-between mb-2 sm:mb-3">
 						<div className="flex-1 min-w-0">
@@ -396,7 +504,7 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 
 			{/* Persistent volume indicator when controls hidden (desktop only) */}
 			{!showControls && !isMobile && (
-				<div className="absolute bottom-3 right-3 flex items-center gap-2">
+				<div className="absolute bottom-3 right-3 flex items-center gap-2 pointer-events-none">
 					<div className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
 						isMuted ? "bg-black/60" : "bg-green-500/90"
 					}`}>
@@ -408,7 +516,7 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 
 			{/* Tap hint for mobile (shows briefly) */}
 			{isMobile && !showControls && (
-				<div className="absolute inset-0 flex items-center justify-center bg-black/30">
+				<div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
 					<p className="text-white text-sm">Tap for controls</p>
 				</div>
 			)}
