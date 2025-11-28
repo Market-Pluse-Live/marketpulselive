@@ -112,7 +112,22 @@ export function RoomChat({ roomId, roomName }: RoomChatProps) {
 				},
 				(payload) => {
 					const newMsg = payload.new as Message;
-					setMessages((prev) => [...prev, newMsg]);
+					// Avoid duplicates - check if message already exists
+					setMessages((prev) => {
+						const exists = prev.some((m) => m.id === newMsg.id);
+						if (exists) return prev;
+						// Also check for temp messages with same content to avoid duplicates
+						const tempMatch = prev.find(
+							(m) => m.id.startsWith("temp-") && 
+							m.content === newMsg.content && 
+							m.nickname === newMsg.nickname
+						);
+						if (tempMatch) {
+							// Replace temp message with real one
+							return prev.map((m) => m.id === tempMatch.id ? newMsg : m);
+						}
+						return [...prev, newMsg];
+					});
 				}
 			)
 			.on(
@@ -158,37 +173,53 @@ export function RoomChat({ roomId, roomName }: RoomChatProps) {
 			return;
 		}
 
+		const messageContent = newMessage.trim();
+		const tempId = `temp-${Date.now()}`;
+		
+		// Optimistically add message to UI immediately
+		const optimisticMessage: Message = {
+			id: tempId,
+			room_id: roomId,
+			nickname: nickname,
+			content: messageContent,
+			is_admin: isAdmin,
+			created_at: new Date().toISOString(),
+		};
+		setMessages((prev) => [...prev, optimisticMessage]);
+		setNewMessage("");
+
 		if (!isSupabaseConfigured || !supabase) {
-			// Fallback for when Supabase isn't configured
-			const fakeMessage: Message = {
-				id: `local-${Date.now()}`,
-				room_id: roomId,
-				nickname: nickname,
-				content: newMessage.trim(),
-				is_admin: isAdmin,
-				created_at: new Date().toISOString(),
-			};
-			setMessages((prev) => [...prev, fakeMessage]);
-			setNewMessage("");
+			// Keep the optimistic message if Supabase isn't configured
 			return;
 		}
 
 		setIsSending(true);
 		try {
-			const { error } = await supabase.from("messages").insert({
-				room_id: roomId,
-				nickname: nickname,
-				content: newMessage.trim(),
-				is_admin: isAdmin,
-			});
+			const { data, error } = await supabase
+				.from("messages")
+				.insert({
+					room_id: roomId,
+					nickname: nickname,
+					content: messageContent,
+					is_admin: isAdmin,
+				})
+				.select()
+				.single();
 
 			if (error) {
 				console.error("Error sending message:", error);
-			} else {
-				setNewMessage("");
+				// Remove optimistic message on error
+				setMessages((prev) => prev.filter((m) => m.id !== tempId));
+			} else if (data) {
+				// Replace temp message with real one from database
+				setMessages((prev) => 
+					prev.map((m) => m.id === tempId ? data : m)
+				);
 			}
 		} catch (err) {
 			console.error("Failed to send message:", err);
+			// Remove optimistic message on error
+			setMessages((prev) => prev.filter((m) => m.id !== tempId));
 		} finally {
 			setIsSending(false);
 		}
