@@ -131,7 +131,9 @@ export function RoomChat({ roomId, roomName }: RoomChatProps) {
 			.subscribe();
 
 		return () => {
-			supabase.removeChannel(channel);
+			if (supabase) {
+				supabase.removeChannel(channel);
+			}
 		};
 	}, [roomId]);
 
