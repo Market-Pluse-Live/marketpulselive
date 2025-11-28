@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Loader2, Tv, AlertCircle } from "lucide-react";
+import { ArrowLeft, Home, Loader2, Tv, AlertCircle, MessageCircle } from "lucide-react";
 import { StreamPlayer } from "@/components/viewer/StreamPlayer";
 import { Navbar } from "@/components/dashboard/Navbar";
+import { RoomChat } from "@/components/chat/RoomChat";
 import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
 import type { Room } from "@/lib/types";
@@ -172,7 +173,7 @@ export default function RoomViewerPage({
 
 	// Main stream view
 	return (
-		<div className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+		<div className={`min-h-screen flex flex-col ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
 			{/* Show admin navbar if admin, otherwise show simple header */}
 			{isAdmin ? (
 				<Navbar />
@@ -182,8 +183,8 @@ export default function RoomViewerPage({
 						? "border-gray-800 bg-gray-900/80" 
 						: "border-gray-200 bg-white/80"
 				}`}>
-					<div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-						<div className="flex items-center gap-4">
+					<div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+						<div className="flex items-center gap-3 sm:gap-4">
 							<Link 
 								href="/dashboard/dev-company"
 								className={`p-2 rounded-lg transition-colors ${
@@ -195,7 +196,7 @@ export default function RoomViewerPage({
 								<ArrowLeft className="h-5 w-5" />
 							</Link>
 							<div>
-								<h1 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+								<h1 className={`text-base sm:text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
 									{room.name}
 								</h1>
 								<div className="flex items-center gap-2">
@@ -206,16 +207,24 @@ export default function RoomViewerPage({
 								</div>
 							</div>
 						</div>
-						<Link 
-							href="/dashboard/dev-company"
-							className={`p-2 rounded-lg transition-colors ${
-								isDark 
-									? "hover:bg-gray-800 text-gray-400 hover:text-white" 
-									: "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-							}`}
-						>
-							<Home className="h-5 w-5" />
-						</Link>
+						<div className="flex items-center gap-2">
+							<div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full ${
+								isDark ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-600"
+							}`}>
+								<MessageCircle className="h-4 w-4" />
+								<span className="text-xs font-medium">Chat Available</span>
+							</div>
+							<Link 
+								href="/dashboard/dev-company"
+								className={`p-2 rounded-lg transition-colors ${
+									isDark 
+										? "hover:bg-gray-800 text-gray-400 hover:text-white" 
+										: "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+								}`}
+							>
+								<Home className="h-5 w-5" />
+							</Link>
+						</div>
 					</div>
 				</header>
 			)}
@@ -223,7 +232,7 @@ export default function RoomViewerPage({
 			{/* Stream info bar for admin */}
 			{isAdmin && (
 				<div className={`border-b ${isDark ? "border-gray-800 bg-gray-900/50" : "border-gray-200 bg-gray-50"}`}>
-					<div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+					<div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<Link 
 								href="/dashboard/dev-company"
@@ -232,30 +241,65 @@ export default function RoomViewerPage({
 								}`}
 							>
 								<ArrowLeft className="h-4 w-4" />
-								Back to Dashboard
+								<span className="hidden sm:inline">Back to Dashboard</span>
 							</Link>
-							<span className={isDark ? "text-gray-700" : "text-gray-300"}>|</span>
-							<h1 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+							<span className={`hidden sm:inline ${isDark ? "text-gray-700" : "text-gray-300"}`}>|</span>
+							<h1 className={`text-base sm:text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
 								{room.name}
 							</h1>
 						</div>
-						<div className="flex items-center gap-2">
-							<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-							<span className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-500"}`}>
-								LIVE
-							</span>
+						<div className="flex items-center gap-3">
+							<div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full ${
+								isDark ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-600"
+							}`}>
+								<MessageCircle className="h-4 w-4" />
+								<span className="text-xs font-medium">Live Chat</span>
+							</div>
+							<div className="flex items-center gap-2">
+								<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+								<span className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-500"}`}>
+									LIVE
+								</span>
+							</div>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Stream Player */}
-			<div className="max-w-7xl mx-auto px-6 py-6">
-				<StreamPlayer
-					streamUrl={room.streamUrl}
-					streamType={room.streamType}
-					roomName={room.name}
-				/>
+			{/* Main Content - Stream + Chat side by side */}
+			<div className="flex-1 flex flex-col lg:flex-row">
+				{/* Stream Player Area */}
+				<div className="flex-1 p-4 sm:p-6">
+					<div className="max-w-5xl mx-auto">
+						<StreamPlayer
+							streamUrl={room.streamUrl}
+							streamType={room.streamType}
+							roomName={room.name}
+						/>
+						
+						{/* Mobile chat hint */}
+						<div className={`lg:hidden mt-4 p-3 rounded-xl text-center ${
+							isDark ? "bg-purple-500/10 border border-purple-500/20" : "bg-purple-50 border border-purple-100"
+						}`}>
+							<div className="flex items-center justify-center gap-2">
+								<MessageCircle className={`h-4 w-4 ${isDark ? "text-purple-400" : "text-purple-600"}`} />
+								<span className={`text-sm ${isDark ? "text-purple-300" : "text-purple-700"}`}>
+									Open chat panel from the right side →
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Chat Panel - Right Side (like Zoom) */}
+				<div className="hidden lg:flex h-[calc(100vh-120px)] sticky top-[120px]">
+					<RoomChat roomId={roomId} roomName={room.name} />
+				</div>
+			</div>
+
+			{/* Mobile/Tablet Chat (floating) */}
+			<div className="lg:hidden">
+				<RoomChat roomId={roomId} roomName={room.name} />
 			</div>
 		</div>
 	);

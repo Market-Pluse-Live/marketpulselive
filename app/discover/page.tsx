@@ -196,52 +196,52 @@ export default function DiscoverPage() {
 			{isAdmin ? (
 				<Navbar />
 			) : (
-				<header className={`border-b backdrop-blur-xl sticky top-0 z-10 transition-colors duration-300 ${
-					isDark 
-						? "border-gray-800/50 bg-gray-900/30" 
-						: "border-gray-200 bg-white/70"
-				}`}>
-					<div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+			<header className={`border-b backdrop-blur-xl sticky top-0 z-10 transition-colors duration-300 ${
+				isDark 
+					? "border-gray-800/50 bg-gray-900/30" 
+					: "border-gray-200 bg-white/70"
+			}`}>
+				<div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 						<Link href={isAuthenticated ? "/dashboard/dev-company" : "/"}>
-							<motion.div 
-								className="flex items-center gap-3"
-								whileHover={{ scale: 1.02 }}
-								whileTap={{ scale: 0.98 }}
-							>
-								<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+						<motion.div 
+							className="flex items-center gap-3"
+							whileHover={{ scale: 1.02 }}
+							whileTap={{ scale: 0.98 }}
+						>
+							<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
 									<Radio className="h-5 w-5 text-white" />
-								</div>
-								<span className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-									Discover{" "}
-									<span 
-										style={{ 
-											background: "linear-gradient(to right, #a78bfa, #ec4899)",
-											WebkitBackgroundClip: "text",
-											WebkitTextFillColor: "transparent",
-											backgroundClip: "text"
-										}}
-									>
-										Live
-									</span>
+							</div>
+							<span className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+								Discover{" "}
+								<span 
+									style={{ 
+										background: "linear-gradient(to right, #a78bfa, #ec4899)",
+										WebkitBackgroundClip: "text",
+										WebkitTextFillColor: "transparent",
+										backgroundClip: "text"
+									}}
+								>
+									Live
 								</span>
-							</motion.div>
-						</Link>
-						
+							</span>
+						</motion.div>
+					</Link>
+					
 						<div className="flex items-center gap-3">
 							<Link href={isAuthenticated ? "/dashboard/dev-company" : "/"}>
-								<motion.button
-									whileHover={{ scale: 1.05 }}
-									whileTap={{ scale: 0.95 }}
-									className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-										isDark 
-											? "text-gray-400 hover:text-white hover:bg-gray-800/50" 
-											: "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-									}`}
-								>
-									<Home className="h-4 w-4" />
+						<motion.button
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.95 }}
+							className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+								isDark 
+									? "text-gray-400 hover:text-white hover:bg-gray-800/50" 
+									: "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+							}`}
+						>
+							<Home className="h-4 w-4" />
 									{isAuthenticated ? "Dashboard" : "Home"}
-								</motion.button>
-							</Link>
+						</motion.button>
+					</Link>
 							{!isAuthenticated && (
 								<motion.button
 									whileHover={{ scale: 1.05 }}
@@ -253,8 +253,8 @@ export default function DiscoverPage() {
 								</motion.button>
 							)}
 						</div>
-					</div>
-				</header>
+				</div>
+			</header>
 			)}
 			
 			<div className="max-w-6xl mx-auto px-6 py-8">
