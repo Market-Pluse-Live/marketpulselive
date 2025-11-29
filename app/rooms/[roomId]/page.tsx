@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Loader2, Tv, AlertCircle, MessageCircle } from "lucide-react";
+import { ArrowLeft, Home, Loader2, Tv, AlertCircle } from "lucide-react";
 import { StreamPlayer } from "@/components/viewer/StreamPlayer";
 import { Navbar } from "@/components/dashboard/Navbar";
-import { RoomChat } from "@/components/chat/RoomChat";
 import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
 import type { Room } from "@/lib/types";
@@ -207,24 +206,16 @@ export default function RoomViewerPage({
 								</div>
 							</div>
 						</div>
-						<div className="flex items-center gap-2">
-							<div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full ${
-								isDark ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-600"
-							}`}>
-								<MessageCircle className="h-4 w-4" />
-								<span className="text-xs font-medium">Chat Available</span>
-							</div>
-							<Link 
-								href="/dashboard/dev-company"
-								className={`p-2 rounded-lg transition-colors ${
-									isDark 
-										? "hover:bg-gray-800 text-gray-400 hover:text-white" 
-										: "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-								}`}
-							>
-								<Home className="h-5 w-5" />
-							</Link>
-						</div>
+						<Link 
+							href="/dashboard/dev-company"
+							className={`p-2 rounded-lg transition-colors ${
+								isDark 
+									? "hover:bg-gray-800 text-gray-400 hover:text-white" 
+									: "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+							}`}
+						>
+							<Home className="h-5 w-5" />
+						</Link>
 					</div>
 				</header>
 			)}
@@ -248,58 +239,25 @@ export default function RoomViewerPage({
 								{room.name}
 							</h1>
 						</div>
-						<div className="flex items-center gap-3">
-							<div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full ${
-								isDark ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-600"
-							}`}>
-								<MessageCircle className="h-4 w-4" />
-								<span className="text-xs font-medium">Live Chat</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-								<span className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-500"}`}>
-									LIVE
-								</span>
-							</div>
+						<div className="flex items-center gap-2">
+							<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+							<span className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-500"}`}>
+								LIVE
+							</span>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Main Content - Stream + Chat side by side */}
-			<div className="flex-1 flex flex-col lg:flex-row">
-				{/* Stream Player Area */}
-				<div className="flex-1 p-4 sm:p-6">
-					<div className="max-w-5xl mx-auto">
-						<StreamPlayer
-							streamUrl={room.streamUrl}
-							streamType={room.streamType}
-							roomName={room.name}
-						/>
-						
-						{/* Mobile chat hint */}
-						<div className={`lg:hidden mt-4 p-3 rounded-xl text-center ${
-							isDark ? "bg-purple-500/10 border border-purple-500/20" : "bg-purple-50 border border-purple-100"
-						}`}>
-							<div className="flex items-center justify-center gap-2">
-								<MessageCircle className={`h-4 w-4 ${isDark ? "text-purple-400" : "text-purple-600"}`} />
-								<span className={`text-sm ${isDark ? "text-purple-300" : "text-purple-700"}`}>
-									Open chat panel from the right side →
-								</span>
-							</div>
-						</div>
-					</div>
+			{/* Main Content - Stream */}
+			<div className="flex-1 p-4 sm:p-6">
+				<div className="max-w-5xl mx-auto">
+					<StreamPlayer
+						streamUrl={room.streamUrl}
+						streamType={room.streamType}
+						roomName={room.name}
+					/>
 				</div>
-
-				{/* Chat Panel - Right Side (like Zoom) */}
-				<div className="hidden lg:flex h-[calc(100vh-120px)] sticky top-[120px]">
-					<RoomChat roomId={roomId} roomName={room.name} />
-				</div>
-			</div>
-
-			{/* Mobile/Tablet Chat (floating) */}
-			<div className="lg:hidden">
-				<RoomChat roomId={roomId} roomName={room.name} />
 			</div>
 		</div>
 	);
