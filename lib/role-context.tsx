@@ -22,11 +22,11 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-	// Always start with null role - user must select every session
-	const [role, setRole] = useState<UserRole>(null);
+	// Default to viewer role - no selection needed
+	const [role, setRole] = useState<UserRole>("viewer");
 	const [isRoleLoading, setIsRoleLoading] = useState(true);
 
-	// Clear any stored role and set loading to false on mount
+	// Set loading to false on mount - default is already viewer
 	useEffect(() => {
 		// Clear any previously stored role
 		if (typeof window !== "undefined") {

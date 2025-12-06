@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuth } from "@/lib/auth-context";
 import { useRole } from "@/lib/role-context";
+import { Shield, Key, Loader2, AlertCircle, X } from "lucide-react";
 
 const navItems = [
 	{ href: "/dashboard/dev-company", label: "Dashboard", icon: "📊" },
@@ -25,7 +26,7 @@ export function Navbar() {
 	const router = useRouter();
 	const { theme, toggleTheme } = useTheme();
 	const { logout, user } = useAuth();
-	const { isAdmin, resetRole } = useRole();
+	const { isAdmin, resetRole, setAsAdmin, setAsViewer } = useRole();
 	const [showUserMenu, setShowUserMenu] = useState(false);
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [notifications, setNotifications] = useState<Array<{
@@ -34,6 +35,62 @@ export function Navbar() {
 		time: string;
 		read: boolean;
 	}>>([]);
+	
+	// Secret admin access - click badge 5 times
+	const [badgeClickCount, setBadgeClickCount] = useState(0);
+	const [showAdminModal, setShowAdminModal] = useState(false);
+	const [adminKey, setAdminKey] = useState("");
+	const [adminError, setAdminError] = useState("");
+	const [isVerifying, setIsVerifying] = useState(false);
+	const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	
+	// Handle badge click for secret admin access
+	const handleBadgeClick = () => {
+		if (isAdmin) {
+			// If already admin, clicking switches back to viewer
+			setAsViewer();
+			return;
+		}
+		
+		// Count clicks - 5 clicks within 3 seconds reveals admin modal
+		setBadgeClickCount(prev => prev + 1);
+		
+		// Reset timeout
+		if (clickTimeoutRef.current) {
+			clearTimeout(clickTimeoutRef.current);
+		}
+		
+		clickTimeoutRef.current = setTimeout(() => {
+			setBadgeClickCount(0);
+		}, 3000);
+	};
+	
+	// Show admin modal when 5 clicks reached
+	useEffect(() => {
+		if (badgeClickCount >= 5) {
+			setShowAdminModal(true);
+			setBadgeClickCount(0);
+		}
+	}, [badgeClickCount]);
+	
+	// Handle admin key submission
+	const handleAdminSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setAdminError("");
+		setIsVerifying(true);
+		
+		await new Promise(resolve => setTimeout(resolve, 500));
+		
+		const success = setAsAdmin(adminKey);
+		if (success) {
+			setShowAdminModal(false);
+			setAdminKey("");
+		} else {
+			setAdminError("Invalid admin key");
+			setAdminKey("");
+		}
+		setIsVerifying(false);
+	};
 
 	// Filter nav items based on role
 	const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
@@ -175,16 +232,30 @@ export function Navbar() {
 							);
 						})}
 
-						{/* Admin Badge */}
-						{isAdmin && (
-							<motion.div
-								initial={{ opacity: 0, scale: 0.9 }}
-								animate={{ opacity: 1, scale: 1 }}
-								className="ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30"
-							>
-								<span className="text-xs font-semibold text-purple-400">🛡️ Admin</span>
-							</motion.div>
-						)}
+						{/* Role Badge - Viewer (click 5x for admin) or Admin (click to switch back) */}
+						<motion.button
+							initial={{ opacity: 0, scale: 0.9 }}
+							animate={{ opacity: 1, scale: 1 }}
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.95 }}
+							onClick={handleBadgeClick}
+							className={`ml-2 px-3 py-1 rounded-full border transition-all cursor-pointer select-none ${
+								isAdmin 
+									? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30 hover:border-purple-500/50" 
+									: theme === 'dark'
+										? "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+										: "bg-gray-100 border-gray-300 hover:border-gray-400"
+							}`}
+							title={isAdmin ? "Click to switch to Viewer mode" : undefined}
+						>
+							<span className={`text-xs font-semibold ${
+								isAdmin 
+									? "text-purple-400" 
+									: theme === 'dark' ? "text-gray-400" : "text-gray-600"
+							}`}>
+								{isAdmin ? "🛡️ Admin" : "👁️ Viewer"}
+							</span>
+						</motion.button>
 					</div>
 
 					{/* Right Side */}
@@ -346,26 +417,14 @@ export function Navbar() {
 											<button
 												className={`w-full px-4 py-2 text-left text-sm transition-colors ${
 													theme === 'dark'
-														? "text-amber-400 hover:bg-gray-800"
-														: "text-amber-600 hover:bg-gray-100"
-												}`}
-												onClick={() => {
-													setShowUserMenu(false);
-													resetRole();
-												}}
-											>
-												🔄 Switch Role
-											</button>
-											<button
-												className={`w-full px-4 py-2 text-left text-sm transition-colors ${
-													theme === 'dark'
 														? "text-red-400 hover:bg-gray-800"
 														: "text-red-600 hover:bg-gray-100"
 												}`}
 												onClick={() => {
 													setShowUserMenu(false);
 													logout();
-													router.push("/");
+													// Switch back to viewer mode after signing out
+													setAsViewer();
 												}}
 											>
 												🚪 Sign Out
@@ -378,6 +437,114 @@ export function Navbar() {
 					</div>
 				</div>
 			</div>
+			
+			{/* Secret Admin Access Modal */}
+			<AnimatePresence>
+				{showAdminModal && (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+						onClick={() => setShowAdminModal(false)}
+					>
+						<motion.div
+							initial={{ opacity: 0, scale: 0.9, y: 20 }}
+							animate={{ opacity: 1, scale: 1, y: 0 }}
+							exit={{ opacity: 0, scale: 0.9, y: 20 }}
+							onClick={(e) => e.stopPropagation()}
+							className={`relative w-full max-w-sm p-6 rounded-2xl border shadow-2xl ${
+								theme === 'dark'
+									? "bg-gray-900 border-gray-700"
+									: "bg-white border-gray-200"
+							}`}
+						>
+							{/* Close button */}
+							<button
+								onClick={() => setShowAdminModal(false)}
+								className={`absolute top-4 right-4 p-1 rounded-lg transition-colors ${
+									theme === 'dark'
+										? "text-gray-400 hover:text-white hover:bg-gray-800"
+										: "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+								}`}
+							>
+								<X className="h-5 w-5" />
+							</button>
+							
+							{/* Header */}
+							<div className="text-center mb-6">
+								<div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
+									theme === 'dark' ? "bg-purple-500/20" : "bg-purple-100"
+								}`}>
+									<Key className={`h-6 w-6 ${theme === 'dark' ? "text-purple-400" : "text-purple-600"}`} />
+								</div>
+								<h3 className={`text-lg font-semibold ${theme === 'dark' ? "text-white" : "text-gray-900"}`}>
+									Admin Access
+								</h3>
+								<p className={`text-sm mt-1 ${theme === 'dark' ? "text-gray-400" : "text-gray-500"}`}>
+									Enter your admin key
+								</p>
+							</div>
+							
+							{/* Form */}
+							<form onSubmit={handleAdminSubmit} className="space-y-4">
+								<input
+									type="password"
+									value={adminKey}
+									onChange={(e) => {
+										setAdminKey(e.target.value);
+										setAdminError("");
+									}}
+									placeholder="Enter admin key..."
+									autoFocus
+									className={`w-full px-4 py-3 rounded-xl border text-center font-mono tracking-widest transition-colors ${
+										theme === 'dark'
+											? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500"
+											: "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-purple-500"
+									} focus:outline-none ${adminError ? "border-red-500" : ""}`}
+								/>
+								
+								{adminError && (
+									<motion.div
+										initial={{ opacity: 0, y: -10 }}
+										animate={{ opacity: 1, y: 0 }}
+										className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20"
+									>
+										<AlertCircle className="h-4 w-4 text-red-400" />
+										<span className="text-sm text-red-400">{adminError}</span>
+									</motion.div>
+								)}
+								
+								<motion.button
+									type="submit"
+									disabled={!adminKey.trim() || isVerifying}
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+									className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+										adminKey.trim() && !isVerifying
+											? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25"
+											: theme === 'dark'
+												? "bg-gray-800 text-gray-500 cursor-not-allowed"
+												: "bg-gray-200 text-gray-400 cursor-not-allowed"
+									}`}
+								>
+									{isVerifying ? (
+										<>
+											<Loader2 className="h-5 w-5 animate-spin" />
+											Verifying...
+										</>
+									) : (
+										<>
+											<Shield className="h-5 w-5" />
+											Access Admin
+										</>
+									)}
+								</motion.button>
+							</form>
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</motion.nav>
 	);
 }

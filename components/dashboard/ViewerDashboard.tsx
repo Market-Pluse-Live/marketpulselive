@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Tv, Radio, Eye, LogOut, RefreshCw } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Tv, Radio, Eye, LogOut, RefreshCw, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
 import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
@@ -164,7 +164,7 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	);
 }
 
-// Mobile-optimized header for viewers
+// Mobile-optimized header for viewers with secret admin access
 function ViewerHeader({ 
 	liveCount, 
 	isDark, 
@@ -178,83 +178,248 @@ function ViewerHeader({
 	onRefresh: () => void;
 	isRefreshing: boolean;
 }) {
+	const { setAsAdmin } = useRole();
+	
+	// Secret admin access - click badge 5 times
+	const [badgeClickCount, setBadgeClickCount] = useState(0);
+	const [showAdminModal, setShowAdminModal] = useState(false);
+	const [adminKey, setAdminKey] = useState("");
+	const [adminError, setAdminError] = useState("");
+	const [isVerifying, setIsVerifying] = useState(false);
+	const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	
+	// Handle badge click for secret admin access
+	const handleBadgeClick = () => {
+		setBadgeClickCount(prev => prev + 1);
+		
+		if (clickTimeoutRef.current) {
+			clearTimeout(clickTimeoutRef.current);
+		}
+		
+		clickTimeoutRef.current = setTimeout(() => {
+			setBadgeClickCount(0);
+		}, 3000);
+	};
+	
+	// Show admin modal when 5 clicks reached
+	useEffect(() => {
+		if (badgeClickCount >= 5) {
+			setShowAdminModal(true);
+			setBadgeClickCount(0);
+		}
+	}, [badgeClickCount]);
+	
+	// Handle admin key submission
+	const handleAdminSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setAdminError("");
+		setIsVerifying(true);
+		
+		await new Promise(resolve => setTimeout(resolve, 500));
+		
+		const success = setAsAdmin(adminKey);
+		if (success) {
+			setShowAdminModal(false);
+			setAdminKey("");
+		} else {
+			setAdminError("Invalid admin key");
+			setAdminKey("");
+		}
+		setIsVerifying(false);
+	};
+	
 	return (
-		<header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${
-			isDark 
-				? "bg-gray-950/80 border-gray-800" 
-				: "bg-white/80 border-gray-200"
-		}`}>
-			<div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-				{/* Logo */}
-				<div className="flex items-center gap-2 sm:gap-3">
-					<div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-						<Tv className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+		<>
+			<header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${
+				isDark 
+					? "bg-gray-950/80 border-gray-800" 
+					: "bg-white/80 border-gray-200"
+			}`}>
+				<div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+					{/* Logo */}
+					<div className="flex items-center gap-2 sm:gap-3">
+						<div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+							<Tv className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+						</div>
+						<div>
+							<h1 className={`font-bold text-sm sm:text-lg ${isDark ? "text-white" : "text-gray-900"}`}>
+								Market Pulse Live
+							</h1>
+							<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-400"} hidden xs:block`}>
+								Viewer Mode
+							</p>
+						</div>
 					</div>
-					<div>
-						<h1 className={`font-bold text-sm sm:text-lg ${isDark ? "text-white" : "text-gray-900"}`}>
-							Market Pulse Live
-						</h1>
-						<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-400"} hidden xs:block`}>
-							Viewer Mode
-						</p>
+
+					{/* Right side */}
+					<div className="flex items-center gap-2 sm:gap-4">
+						{/* Live indicator - hidden on very small screens */}
+						{liveCount > 0 && (
+							<div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
+								<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
+								<span className="text-xs sm:text-sm font-medium text-red-400">{liveCount} Live</span>
+							</div>
+						)}
+
+						{/* Mobile live badge */}
+						{liveCount > 0 && (
+							<div className="flex sm:hidden items-center gap-1 px-2 py-1 rounded-full bg-red-500 text-white">
+								<span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+								<span className="text-[10px] font-bold">{liveCount}</span>
+							</div>
+						)}
+
+						{/* Refresh button */}
+						<button
+							onClick={onRefresh}
+							disabled={isRefreshing}
+							className={`p-2 sm:p-2.5 rounded-lg transition-colors touch-manipulation ${
+								isDark 
+									? "text-gray-400 hover:text-white active:bg-gray-800" 
+									: "text-gray-500 hover:text-gray-900 active:bg-gray-100"
+							} ${isRefreshing ? 'animate-spin' : ''}`}
+							title="Refresh"
+						>
+							<RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+						</button>
+
+						{/* Viewer badge - click 5x for admin access (secret) */}
+						<button
+							onClick={handleBadgeClick}
+							className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer select-none transition-all ${
+								isDark 
+									? "bg-gray-800 hover:bg-gray-700" 
+									: "bg-gray-100 hover:bg-gray-200"
+							}`}
+						>
+							<Eye className={`h-4 w-4 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
+							<span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Viewer</span>
+						</button>
+
+						{/* Exit button */}
+						<button
+							onClick={onExit}
+							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors touch-manipulation ${
+								isDark 
+									? "text-gray-400 hover:text-white active:bg-gray-800 bg-gray-800/50" 
+									: "text-gray-500 hover:text-gray-900 active:bg-gray-200 bg-gray-100"
+							}`}
+						>
+							<LogOut className="h-4 w-4" />
+							<span className="text-xs sm:text-sm font-medium">Exit</span>
+						</button>
 					</div>
 				</div>
-
-				{/* Right side */}
-				<div className="flex items-center gap-2 sm:gap-4">
-					{/* Live indicator - hidden on very small screens */}
-					{liveCount > 0 && (
-						<div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
-							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
-							<span className="text-xs sm:text-sm font-medium text-red-400">{liveCount} Live</span>
-						</div>
-					)}
-
-					{/* Mobile live badge */}
-					{liveCount > 0 && (
-						<div className="flex sm:hidden items-center gap-1 px-2 py-1 rounded-full bg-red-500 text-white">
-							<span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-							<span className="text-[10px] font-bold">{liveCount}</span>
-						</div>
-					)}
-
-					{/* Refresh button */}
-					<button
-						onClick={onRefresh}
-						disabled={isRefreshing}
-						className={`p-2 sm:p-2.5 rounded-lg transition-colors touch-manipulation ${
-							isDark 
-								? "text-gray-400 hover:text-white active:bg-gray-800" 
-								: "text-gray-500 hover:text-gray-900 active:bg-gray-100"
-						} ${isRefreshing ? 'animate-spin' : ''}`}
-						title="Refresh"
+			</header>
+			
+			{/* Secret Admin Access Modal */}
+			<AnimatePresence>
+				{showAdminModal && (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+						onClick={() => setShowAdminModal(false)}
 					>
-						<RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-					</button>
-
-					{/* Viewer badge - hidden on mobile */}
-					<div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full ${
-						isDark ? "bg-gray-800" : "bg-gray-100"
-					}`}>
-						<Eye className={`h-4 w-4 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
-						<span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Viewer</span>
-					</div>
-
-					{/* Exit button */}
-					<button
-						onClick={onExit}
-						className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors touch-manipulation ${
-							isDark 
-								? "text-gray-400 hover:text-white active:bg-gray-800 bg-gray-800/50" 
-								: "text-gray-500 hover:text-gray-900 active:bg-gray-200 bg-gray-100"
-						}`}
-					>
-						<LogOut className="h-4 w-4" />
-						<span className="text-xs sm:text-sm font-medium">Exit</span>
-					</button>
-				</div>
-			</div>
-		</header>
+						<motion.div
+							initial={{ opacity: 0, scale: 0.9, y: 20 }}
+							animate={{ opacity: 1, scale: 1, y: 0 }}
+							exit={{ opacity: 0, scale: 0.9, y: 20 }}
+							onClick={(e) => e.stopPropagation()}
+							className={`relative w-full max-w-sm p-6 rounded-2xl border shadow-2xl ${
+								isDark
+									? "bg-gray-900 border-gray-700"
+									: "bg-white border-gray-200"
+							}`}
+						>
+							{/* Close button */}
+							<button
+								onClick={() => setShowAdminModal(false)}
+								className={`absolute top-4 right-4 p-1 rounded-lg transition-colors ${
+									isDark
+										? "text-gray-400 hover:text-white hover:bg-gray-800"
+										: "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+								}`}
+							>
+								<X className="h-5 w-5" />
+							</button>
+							
+							{/* Header */}
+							<div className="text-center mb-6">
+								<div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
+									isDark ? "bg-purple-500/20" : "bg-purple-100"
+								}`}>
+									<Key className={`h-6 w-6 ${isDark ? "text-purple-400" : "text-purple-600"}`} />
+								</div>
+								<h3 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+									Admin Access
+								</h3>
+								<p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+									Enter your admin key
+								</p>
+							</div>
+							
+							{/* Form */}
+							<form onSubmit={handleAdminSubmit} className="space-y-4">
+								<input
+									type="password"
+									value={adminKey}
+									onChange={(e) => {
+										setAdminKey(e.target.value);
+										setAdminError("");
+									}}
+									placeholder="Enter admin key..."
+									autoFocus
+									className={`w-full px-4 py-3 rounded-xl border text-center font-mono tracking-widest transition-colors ${
+										isDark
+											? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500"
+											: "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-purple-500"
+									} focus:outline-none ${adminError ? "border-red-500" : ""}`}
+								/>
+								
+								{adminError && (
+									<motion.div
+										initial={{ opacity: 0, y: -10 }}
+										animate={{ opacity: 1, y: 0 }}
+										className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20"
+									>
+										<AlertCircle className="h-4 w-4 text-red-400" />
+										<span className="text-sm text-red-400">{adminError}</span>
+									</motion.div>
+								)}
+								
+								<motion.button
+									type="submit"
+									disabled={!adminKey.trim() || isVerifying}
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+									className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+										adminKey.trim() && !isVerifying
+											? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25"
+											: isDark
+												? "bg-gray-800 text-gray-500 cursor-not-allowed"
+												: "bg-gray-200 text-gray-400 cursor-not-allowed"
+									}`}
+								>
+									{isVerifying ? (
+										<>
+											<Loader2 className="h-5 w-5 animate-spin" />
+											Verifying...
+										</>
+									) : (
+										<>
+											<Shield className="h-5 w-5" />
+											Access Admin
+										</>
+									)}
+								</motion.button>
+							</form>
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</>
 	);
 }
 
