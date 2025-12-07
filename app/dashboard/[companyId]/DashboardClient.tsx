@@ -51,13 +51,13 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 
 	const { success, error } = useNotification();
 	const { theme } = useTheme();
-	const { isAdmin, isViewer } = useRole();
+	const { isAdmin } = useRole();
 	const isDark = theme === "dark";
 
 	// Define loadRooms with useCallback BEFORE any conditional returns
 	const loadRooms = useCallback(async (showRefreshNotification = false) => {
-		// Skip loading for viewers - they have their own component
-		if (isViewer) {
+		// Skip loading for non-admins - they use ViewerDashboard with its own loading
+		if (!isAdmin) {
 			setIsLoading(false);
 			return;
 		}
@@ -81,26 +81,26 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [companyId, success, error, isViewer]);
+	}, [companyId, success, error, isAdmin]);
 
 	// Load rooms on mount (only for admin)
 	useEffect(() => {
-		if (!isViewer) {
+		if (isAdmin) {
 			loadRooms();
 		} else {
 			setIsLoading(false);
 		}
-	}, [loadRooms, isViewer]);
+	}, [loadRooms, isAdmin]);
 
 	// Real-time updates - poll every 10 seconds (only for admin)
 	useEffect(() => {
-		if (isViewer) return;
+		if (!isAdmin) return;
 		
 		const interval = setInterval(() => {
 			loadRooms(false);
 		}, 10000);
 		return () => clearInterval(interval);
-	}, [loadRooms, isViewer]);
+	}, [loadRooms, isAdmin]);
 
 	// Calculate stats
 	const stats = useMemo(() => {
@@ -120,8 +120,9 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 	// NOW we can do conditional returns - AFTER all hooks
 	// ============================================
 
-	// If role is viewer, show the ViewerDashboard
-	if (isViewer) {
+	// If role is viewer OR not admin (default to viewer experience)
+	// This ensures users who haven't selected admin see the viewer dashboard
+	if (!isAdmin) {
 		return (
 			<RoleGate>
 				<ViewerDashboard companyId={companyId} />
