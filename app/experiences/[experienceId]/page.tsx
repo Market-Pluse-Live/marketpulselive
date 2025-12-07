@@ -1,17 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ViewerDashboard } from "@/components/dashboard/ViewerDashboard";
 import { RoleGate } from "@/components/auth/RoleGate";
+import { useRole } from "@/lib/role-context";
 
 // Experience page - this is what Whop users see when they open the app
 // Shows the viewer dashboard directly - no need to click anything
+// If user becomes admin, redirect to full dashboard
 export default function ExperiencePage({
 	params,
 }: {
 	params: Promise<{ experienceId: string }>;
 }) {
-	// Use dev-company as the companyId for now
-	// In production, you might want to map experienceId to a companyId
+	const { isAdmin } = useRole();
+	const router = useRouter();
+
+	// Redirect to dashboard if user becomes admin
+	useEffect(() => {
+		if (isAdmin) {
+			router.push("/dashboard/dev-company");
+		}
+	}, [isAdmin, router]);
+
+	// Show viewer dashboard for non-admins
 	return (
 		<RoleGate>
 			<ViewerDashboard companyId="dev-company" />
