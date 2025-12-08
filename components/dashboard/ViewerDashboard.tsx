@@ -90,14 +90,18 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					className="flex items-center justify-between mb-3 sm:mb-4"
 				>
 					<div className="flex items-center gap-2 sm:gap-3">
-						<div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 border border-red-500/20">
-							<Tv className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+						<div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border ${
+							isDark 
+								? "bg-gradient-to-br from-red-500/20 to-pink-500/20 border-red-500/20" 
+								: "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+						}`}>
+							<Tv className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isDark ? "text-red-400" : "text-red-500"}`} />
 						</div>
 						<div>
 							<h2 className={`text-base sm:text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
 								Live Streams
 							</h2>
-							<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+							<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
 								{liveCount > 0 ? (
 									<span className="flex items-center gap-1 sm:gap-1.5">
 										<span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-500 rounded-full animate-pulse" />
@@ -112,9 +116,13 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					</div>
 					
 					{liveCount > 0 && (
-						<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
-							<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 animate-pulse" />
-							<span className="text-[10px] sm:text-xs font-medium text-red-300">Live</span>
+						<div className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border ${
+							isDark 
+								? "bg-red-500/10 border-red-500/20" 
+								: "bg-red-50 border-red-200"
+						}`}>
+							<Radio className={`h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse ${isDark ? "text-red-400" : "text-red-500"}`} />
+							<span className={`text-[10px] sm:text-xs font-medium ${isDark ? "text-red-300" : "text-red-600"}`}>Live</span>
 						</div>
 					)}
 				</motion.div>
