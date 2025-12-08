@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
+import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Sun, Moon } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
 import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
@@ -161,6 +161,7 @@ function ViewerHeader({
 	isDark: boolean; 
 }) {
 	const { setAsAdmin } = useRole();
+	const { toggleTheme } = useTheme();
 	
 	// Secret admin access - click Live badge 5 times
 	const [badgeClickCount, setBadgeClickCount] = useState(0);
@@ -230,15 +231,36 @@ function ViewerHeader({
 						</div>
 					</div>
 
-					{/* Right side - Only Live badge with secret admin access */}
-					<div className="flex items-center">
+					{/* Right side - Theme toggle and Live badge */}
+					<div className="flex items-center gap-2 sm:gap-3">
+						{/* Theme toggle button */}
+						<button
+							onClick={toggleTheme}
+							className={`p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 ${
+								isDark 
+									? "text-yellow-400 hover:bg-gray-800" 
+									: "text-gray-600 hover:bg-gray-100"
+							}`}
+							title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+						>
+							{isDark ? (
+								<Sun className="h-4 w-4 sm:h-5 sm:w-5" />
+							) : (
+								<Moon className="h-4 w-4 sm:h-5 sm:w-5" />
+							)}
+						</button>
+						
 						{/* Live badge - click 5x for admin access (secret) */}
 						<button
 							onClick={handleLiveClick}
-							className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-red-500/10 border border-red-500/20 cursor-pointer select-none transition-all hover:bg-red-500/20 active:scale-95"
+							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full cursor-pointer select-none transition-all active:scale-95 ${
+								isDark
+									? "bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+									: "bg-red-50 border border-red-200 hover:bg-red-100"
+							}`}
 						>
 							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
-							<span className="text-xs sm:text-sm font-medium text-red-400">{liveCount} Live</span>
+							<span className={`text-xs sm:text-sm font-medium ${isDark ? "text-red-400" : "text-red-600"}`}>{liveCount} Live</span>
 						</button>
 					</div>
 				</div>
