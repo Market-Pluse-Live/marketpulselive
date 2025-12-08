@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tv, Radio, Eye, LogOut, RefreshCw, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
+import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
 import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
@@ -15,29 +15,20 @@ interface ViewerDashboardProps {
 export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	const [rooms, setRooms] = useState<Room[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [isRefreshing, setIsRefreshing] = useState(false);
 	const { theme } = useTheme();
-	const { resetRole } = useRole();
 	const isDark = theme === "dark";
 
-	const loadRooms = useCallback(async (showRefresh = false) => {
+	const loadRooms = useCallback(async () => {
 		try {
-			if (showRefresh) setIsRefreshing(true);
-			console.log("ViewerDashboard: Fetching rooms for companyId:", companyId);
 			const response = await fetch(`/api/rooms?companyId=${companyId}`);
 			if (response.ok) {
 				const data = await response.json();
-				console.log("ViewerDashboard: Received rooms:", data.rooms);
-				console.log("ViewerDashboard: Active rooms:", data.rooms?.filter((r: Room) => r.isActive && r.streamUrl));
 				setRooms(data.rooms || []);
-			} else {
-				console.error("ViewerDashboard: API returned error:", response.status);
 			}
 		} catch (err) {
 			console.error("Failed to load rooms:", err);
 		} finally {
 			setIsLoading(false);
-			setIsRefreshing(false);
 		}
 	}, [companyId]);
 
@@ -47,7 +38,7 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 
 	// Poll for updates every 10 seconds
 	useEffect(() => {
-		const interval = setInterval(() => loadRooms(false), 10000);
+		const interval = setInterval(() => loadRooms(), 10000);
 		return () => clearInterval(interval);
 	}, [loadRooms]);
 
@@ -63,7 +54,7 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					? "bg-gradient-to-b from-gray-950 via-gray-950 to-gray-900" 
 					: "bg-gradient-to-b from-gray-50 via-white to-gray-100"
 			}`}>
-				<ViewerHeader liveCount={0} isDark={isDark} onExit={resetRole} onRefresh={() => {}} isRefreshing={false} />
+				<ViewerHeader liveCount={0} isDark={isDark} />
 				<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 						{[...Array(8)].map((_, i) => (
@@ -89,9 +80,6 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 			<ViewerHeader 
 				liveCount={liveCount} 
 				isDark={isDark} 
-				onExit={resetRole} 
-				onRefresh={() => loadRooms(true)} 
-				isRefreshing={isRefreshing} 
 			/>
 			
 			<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
@@ -164,23 +152,17 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	);
 }
 
-// Mobile-optimized header for viewers with secret admin access
+// Clean header for viewers with secret admin access via Live button
 function ViewerHeader({ 
 	liveCount, 
-	isDark, 
-	onExit, 
-	onRefresh, 
-	isRefreshing 
+	isDark
 }: { 
 	liveCount: number; 
 	isDark: boolean; 
-	onExit: () => void; 
-	onRefresh: () => void;
-	isRefreshing: boolean;
 }) {
 	const { setAsAdmin } = useRole();
 	
-	// Secret admin access - click badge 5 times
+	// Secret admin access - click Live badge 5 times
 	const [badgeClickCount, setBadgeClickCount] = useState(0);
 	const [showAdminModal, setShowAdminModal] = useState(false);
 	const [adminKey, setAdminKey] = useState("");
@@ -188,8 +170,8 @@ function ViewerHeader({
 	const [isVerifying, setIsVerifying] = useState(false);
 	const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	
-	// Handle badge click for secret admin access
-	const handleBadgeClick = () => {
+	// Handle Live badge click for secret admin access
+	const handleLiveClick = () => {
 		setBadgeClickCount(prev => prev + 1);
 		
 		if (clickTimeoutRef.current) {
@@ -245,68 +227,18 @@ function ViewerHeader({
 							<h1 className={`font-bold text-sm sm:text-lg ${isDark ? "text-white" : "text-gray-900"}`}>
 								Market Pulse Live
 							</h1>
-							<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-400"} hidden xs:block`}>
-								Viewer Mode
-							</p>
 						</div>
 					</div>
 
-					{/* Right side */}
-					<div className="flex items-center gap-2 sm:gap-4">
-						{/* Live indicator - hidden on very small screens */}
-						{liveCount > 0 && (
-							<div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
-								<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
-								<span className="text-xs sm:text-sm font-medium text-red-400">{liveCount} Live</span>
-							</div>
-						)}
-
-						{/* Mobile live badge */}
-						{liveCount > 0 && (
-							<div className="flex sm:hidden items-center gap-1 px-2 py-1 rounded-full bg-red-500 text-white">
-								<span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-								<span className="text-[10px] font-bold">{liveCount}</span>
-							</div>
-						)}
-
-						{/* Refresh button */}
+					{/* Right side - Only Live badge with secret admin access */}
+					<div className="flex items-center">
+						{/* Live badge - click 5x for admin access (secret) */}
 						<button
-							onClick={onRefresh}
-							disabled={isRefreshing}
-							className={`p-2 sm:p-2.5 rounded-lg transition-colors touch-manipulation ${
-								isDark 
-									? "text-gray-400 hover:text-white active:bg-gray-800" 
-									: "text-gray-500 hover:text-gray-900 active:bg-gray-100"
-							} ${isRefreshing ? 'animate-spin' : ''}`}
-							title="Refresh"
+							onClick={handleLiveClick}
+							className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-red-500/10 border border-red-500/20 cursor-pointer select-none transition-all hover:bg-red-500/20 active:scale-95"
 						>
-							<RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-						</button>
-
-						{/* Viewer badge - click 5x for admin access (secret) */}
-						<button
-							onClick={handleBadgeClick}
-							className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer select-none transition-all ${
-								isDark 
-									? "bg-gray-800 hover:bg-gray-700" 
-									: "bg-gray-100 hover:bg-gray-200"
-							}`}
-						>
-							<Eye className={`h-4 w-4 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
-							<span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Viewer</span>
-						</button>
-
-						{/* Exit button */}
-						<button
-							onClick={onExit}
-							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors touch-manipulation ${
-								isDark 
-									? "text-gray-400 hover:text-white active:bg-gray-800 bg-gray-800/50" 
-									: "text-gray-500 hover:text-gray-900 active:bg-gray-200 bg-gray-100"
-							}`}
-						>
-							<LogOut className="h-4 w-4" />
-							<span className="text-xs sm:text-sm font-medium">Exit</span>
+							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
+							<span className="text-xs sm:text-sm font-medium text-red-400">{liveCount} Live</span>
 						</button>
 					</div>
 				</div>
