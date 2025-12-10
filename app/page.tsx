@@ -1,29 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 
 export default function HomePage() {
 	const router = useRouter();
-	const { theme } = useTheme();
-	const isDark = theme === "dark";
+	const searchParams = useSearchParams();
 
-	// Redirect to dashboard immediately - the role selection will be shown there
+	// Redirect to dashboard immediately - preserve query params for business ID gating
 	useEffect(() => {
-		router.replace("/dashboard/dev-company");
-	}, [router]);
+		const params = searchParams.toString();
+		const url = params ? `/dashboard/dev-company?${params}` : "/dashboard/dev-company";
+		router.replace(url);
+	}, [router, searchParams]);
 
 	return (
-		<div className={`min-h-screen flex items-center justify-center ${
-			isDark ? "bg-gray-950" : "bg-gray-50"
-		}`}>
+		<div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
 			<div className="text-center">
-				<Loader2 className={`h-8 w-8 animate-spin mx-auto mb-4 ${
-					isDark ? "text-purple-400" : "text-purple-600"
-				}`} />
-				<p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+				<Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600 dark:text-purple-400" />
+				<p className="text-sm text-gray-600 dark:text-gray-400">
 					Loading Market Pulse Live...
 				</p>
 			</div>
