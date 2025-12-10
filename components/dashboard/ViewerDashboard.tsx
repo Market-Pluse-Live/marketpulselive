@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Sun, Moon } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
@@ -15,8 +16,6 @@ interface ViewerDashboardProps {
 export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	const [rooms, setRooms] = useState<Room[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const { theme } = useTheme();
-	const isDark = theme === "dark";
 
 	const loadRooms = useCallback(async () => {
 		try {
@@ -49,20 +48,14 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	// Loading state
 	if (isLoading) {
 		return (
-			<div className={`min-h-screen transition-colors duration-300 ${
-				isDark 
-					? "bg-gradient-to-b from-gray-950 via-gray-950 to-gray-900" 
-					: "bg-gradient-to-b from-gray-50 via-white to-gray-100"
-			}`}>
-				<ViewerHeader liveCount={0} isDark={isDark} />
+			<div className="min-h-screen transition-colors duration-300 bg-gradient-to-b from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
+				<ViewerHeader liveCount={0} />
 				<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 						{[...Array(8)].map((_, i) => (
 							<div 
 								key={i} 
-								className={`aspect-video rounded-xl sm:rounded-2xl animate-pulse ${
-									isDark ? "bg-gray-800" : "bg-gray-200"
-								}`} 
+								className="aspect-video rounded-xl sm:rounded-2xl animate-pulse bg-gray-200 dark:bg-gray-800" 
 							/>
 						))}
 					</div>
@@ -72,15 +65,8 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	}
 
 	return (
-		<div className={`min-h-screen transition-colors duration-300 ${
-			isDark 
-				? "bg-gradient-to-b from-gray-950 via-gray-950 to-gray-900" 
-				: "bg-gradient-to-b from-gray-50 via-white to-gray-100"
-		}`}>
-			<ViewerHeader 
-				liveCount={liveCount} 
-				isDark={isDark} 
-			/>
+		<div className="min-h-screen transition-colors duration-300 bg-gradient-to-b from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
+			<ViewerHeader liveCount={liveCount} />
 			
 			<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
 				{/* Live Streams Header */}
@@ -90,18 +76,14 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					className="flex items-center justify-between mb-3 sm:mb-4"
 				>
 					<div className="flex items-center gap-2 sm:gap-3">
-						<div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border ${
-							isDark 
-								? "bg-gradient-to-br from-red-500/20 to-pink-500/20 border-red-500/20" 
-								: "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
-						}`}>
-							<Tv className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isDark ? "text-red-400" : "text-red-500"}`} />
+						<div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border bg-gradient-to-br from-red-50 to-pink-50 border-red-200 dark:from-red-500/20 dark:to-pink-500/20 dark:border-red-500/20">
+							<Tv className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 dark:text-red-400" />
 						</div>
 						<div>
-							<h2 className={`text-base sm:text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+							<h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
 								Live Streams
 							</h2>
-							<p className={`text-[10px] sm:text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
+							<p className="text-[10px] sm:text-xs text-gray-500">
 								{liveCount > 0 ? (
 									<span className="flex items-center gap-1 sm:gap-1.5">
 										<span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-500 rounded-full animate-pulse" />
@@ -116,13 +98,9 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 					</div>
 					
 					{liveCount > 0 && (
-						<div className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border ${
-							isDark 
-								? "bg-red-500/10 border-red-500/20" 
-								: "bg-red-50 border-red-200"
-						}`}>
-							<Radio className={`h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse ${isDark ? "text-red-400" : "text-red-500"}`} />
-							<span className={`text-[10px] sm:text-xs font-medium ${isDark ? "text-red-300" : "text-red-600"}`}>Live</span>
+						<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/20">
+							<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse text-red-500 dark:text-red-400" />
+							<span className="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-300">Live</span>
 						</div>
 					)}
 				</motion.div>
@@ -136,21 +114,15 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.3 }}
-						className={`text-center py-10 sm:py-16 rounded-xl sm:rounded-2xl border backdrop-blur-sm mt-6 sm:mt-8 ${
-							isDark 
-								? "bg-gray-900/50 border-gray-800" 
-								: "bg-white/80 border-gray-200"
-						}`}
+						className="text-center py-10 sm:py-16 rounded-xl sm:rounded-2xl border backdrop-blur-sm mt-6 sm:mt-8 bg-white/80 border-gray-200 dark:bg-gray-900/50 dark:border-gray-800"
 					>
-						<div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl mb-3 sm:mb-4 ${
-							isDark ? "bg-gray-800" : "bg-gray-100"
-						}`}>
-							<Tv className={`h-6 w-6 sm:h-8 sm:w-8 ${isDark ? "text-gray-500" : "text-gray-400"}`} />
+						<div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl mb-3 sm:mb-4 bg-gray-100 dark:bg-gray-800">
+							<Tv className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 dark:text-gray-500" />
 						</div>
-						<h3 className={`text-base sm:text-lg font-semibold mb-1 sm:mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
+						<h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 text-gray-900 dark:text-white">
 							No Active Streams
 						</h3>
-						<p className={`text-xs sm:text-sm max-w-md mx-auto px-4 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+						<p className="text-xs sm:text-sm max-w-md mx-auto px-4 text-gray-500 dark:text-gray-400">
 							There are no live streams at the moment. Please check back later.
 						</p>
 					</motion.div>
@@ -161,15 +133,16 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 }
 
 // Clean header for viewers with secret admin access via Live button
-function ViewerHeader({ 
-	liveCount, 
-	isDark
-}: { 
-	liveCount: number; 
-	isDark: boolean; 
-}) {
+function ViewerHeader({ liveCount }: { liveCount: number }) {
 	const { setAsAdmin } = useRole();
-	const { toggleTheme } = useTheme();
+	const { toggleTheme, theme } = useTheme();
+	const searchParams = useSearchParams();
+	
+	// Read whop params for gating
+	const bizId = searchParams.get("companyId");
+	
+	// Allowed business ID for admin access
+	const ALLOWED_BIZ_ID = "biz_VlcyoPPLQClcwJ";
 	
 	// Secret admin access - click Live badge 5 times
 	const [badgeClickCount, setBadgeClickCount] = useState(0);
@@ -192,13 +165,15 @@ function ViewerHeader({
 		}, 3000);
 	};
 	
-	// Show admin modal when 5 clicks reached
+	// Show admin modal when 5 clicks reached (only for allowed business)
 	useEffect(() => {
-		if (badgeClickCount >= 5) {
+		if (badgeClickCount >= 5 && bizId === ALLOWED_BIZ_ID) {
 			setShowAdminModal(true);
+		}
+		if (badgeClickCount >= 5) {
 			setBadgeClickCount(0);
 		}
-	}, [badgeClickCount]);
+	}, [badgeClickCount, bizId]);
 	
 	// Handle admin key submission
 	const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -221,11 +196,7 @@ function ViewerHeader({
 	
 	return (
 		<>
-			<header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${
-				isDark 
-					? "bg-gray-950/80 border-gray-800" 
-					: "bg-white/80 border-gray-200"
-			}`}>
+			<header className="sticky top-0 z-50 backdrop-blur-xl border-b bg-white/80 border-gray-200 dark:bg-gray-950/80 dark:border-gray-800">
 				<div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
 					{/* Logo */}
 					<div className="flex items-center gap-2 sm:gap-3">
@@ -233,7 +204,7 @@ function ViewerHeader({
 							<Tv className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
 						</div>
 						<div>
-							<h1 className={`font-bold text-sm sm:text-lg ${isDark ? "text-white" : "text-gray-900"}`}>
+							<h1 className="font-bold text-sm sm:text-lg text-gray-900 dark:text-white">
 								Market Pulse Live
 							</h1>
 						</div>
@@ -244,32 +215,25 @@ function ViewerHeader({
 						{/* Theme toggle button */}
 						<button
 							onClick={toggleTheme}
-							className={`p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 ${
-								isDark 
-									? "text-yellow-400 hover:bg-gray-800" 
-									: "text-gray-600 hover:bg-gray-100"
-							}`}
-							title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+							className="p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 text-gray-600 hover:bg-gray-100 dark:text-yellow-400 dark:hover:bg-gray-800"
+							title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
 						>
-							{isDark ? (
-								<Sun className="h-4 w-4 sm:h-5 sm:w-5" />
-							) : (
-								<Moon className="h-4 w-4 sm:h-5 sm:w-5" />
-							)}
+							<Sun className="h-4 w-4 sm:h-5 sm:w-5 hidden dark:block" />
+							<Moon className="h-4 w-4 sm:h-5 sm:w-5 block dark:hidden" />
 						</button>
 						
-						{/* Live badge - click 5x for admin access (secret) */}
-						<button
-							onClick={handleLiveClick}
-							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full cursor-pointer select-none transition-all active:scale-95 ${
-								isDark
-									? "bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
-									: "bg-red-50 border border-red-200 hover:bg-red-100"
+						{/* Live badge - click 5x for admin access (only for allowed business) */}
+						<div
+							onClick={bizId === ALLOWED_BIZ_ID ? handleLiveClick : undefined}
+							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full select-none transition-all active:scale-95 bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 ${
+								bizId === ALLOWED_BIZ_ID 
+									? "cursor-pointer hover:bg-red-100 dark:hover:bg-red-500/20" 
+									: "cursor-default"
 							}`}
 						>
 							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
-							<span className={`text-xs sm:text-sm font-medium ${isDark ? "text-red-400" : "text-red-600"}`}>{liveCount} Live</span>
-						</button>
+							<span className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">{liveCount} Live</span>
+						</div>
 					</div>
 				</div>
 			</header>
@@ -289,35 +253,25 @@ function ViewerHeader({
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.9, y: 20 }}
 							onClick={(e) => e.stopPropagation()}
-							className={`relative w-full max-w-sm p-6 rounded-2xl border shadow-2xl ${
-								isDark
-									? "bg-gray-900 border-gray-700"
-									: "bg-white border-gray-200"
-							}`}
+							className="relative w-full max-w-sm p-6 rounded-2xl border shadow-2xl bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-700"
 						>
 							{/* Close button */}
 							<button
 								onClick={() => setShowAdminModal(false)}
-								className={`absolute top-4 right-4 p-1 rounded-lg transition-colors ${
-									isDark
-										? "text-gray-400 hover:text-white hover:bg-gray-800"
-										: "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-								}`}
+								className="absolute top-4 right-4 p-1 rounded-lg transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
 							>
 								<X className="h-5 w-5" />
 							</button>
 							
 							{/* Header */}
 							<div className="text-center mb-6">
-								<div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
-									isDark ? "bg-purple-500/20" : "bg-purple-100"
-								}`}>
-									<Key className={`h-6 w-6 ${isDark ? "text-purple-400" : "text-purple-600"}`} />
+								<div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 bg-purple-100 dark:bg-purple-500/20">
+									<Key className="h-6 w-6 text-purple-600 dark:text-purple-400" />
 								</div>
-								<h3 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
 									Admin Access
 								</h3>
-								<p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+								<p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
 									Enter your admin key
 								</p>
 							</div>
@@ -333,11 +287,7 @@ function ViewerHeader({
 									}}
 									placeholder="Enter admin key..."
 									autoFocus
-									className={`w-full px-4 py-3 rounded-xl border text-center font-mono tracking-widest transition-colors ${
-										isDark
-											? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500"
-											: "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-purple-500"
-									} focus:outline-none ${adminError ? "border-red-500" : ""}`}
+									className={`w-full px-4 py-3 rounded-xl border text-center font-mono tracking-widest transition-colors focus:outline-none bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-purple-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-purple-500 ${adminError ? "border-red-500" : ""}`}
 								/>
 								
 								{adminError && (
@@ -359,9 +309,7 @@ function ViewerHeader({
 									className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
 										adminKey.trim() && !isVerifying
 											? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25"
-											: isDark
-												? "bg-gray-800 text-gray-500 cursor-not-allowed"
-												: "bg-gray-200 text-gray-400 cursor-not-allowed"
+											: "bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500"
 									}`}
 								>
 									{isVerifying ? (
@@ -384,4 +332,3 @@ function ViewerHeader({
 		</>
 	);
 }
-

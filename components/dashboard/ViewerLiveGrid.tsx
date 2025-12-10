@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Tv, Volume2, VolumeX, Volume1, Maximize2, Radio, Minus, Plus } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import type { Room } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
@@ -70,9 +69,6 @@ interface ViewerLiveGridProps {
 }
 
 export function ViewerLiveGrid({ rooms }: ViewerLiveGridProps) {
-	const { theme } = useTheme();
-	const isDark = theme === "dark";
-
 	// Get active rooms (max 8 for 4×2 grid)
 	const activeRooms = rooms
 		.filter(r => r.isActive && r.streamUrl)
@@ -91,7 +87,6 @@ export function ViewerLiveGrid({ rooms }: ViewerLiveGridProps) {
 					key={room?.id || `empty-${index}`}
 					room={room}
 					index={index}
-					isDark={isDark}
 				/>
 			))}
 		</div>
@@ -101,10 +96,9 @@ export function ViewerLiveGrid({ rooms }: ViewerLiveGridProps) {
 interface LiveStreamCardProps {
 	room: Room | null;
 	index: number;
-	isDark: boolean;
 }
 
-function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
+function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 	const [volume, setVolume] = useState(0); // Start at 0 for autoplay (0-100)
 	const [showControls, setShowControls] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
@@ -333,15 +327,11 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 				initial={{ opacity: 0, scale: 0.95 }}
 				animate={{ opacity: 1, scale: 1 }}
 				transition={{ delay: index * 0.05 }}
-				className={`aspect-video rounded-xl sm:rounded-2xl border-2 border-dashed flex items-center justify-center ${
-					isDark 
-						? "bg-gray-900/30 border-gray-800" 
-						: "bg-gray-50 border-gray-200"
-				}`}
+				className="aspect-video rounded-xl sm:rounded-2xl border-2 border-dashed flex items-center justify-center bg-gray-50 border-gray-200 dark:bg-gray-900/30 dark:border-gray-800"
 			>
 				<div className="text-center">
-					<Tv className={`h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 ${isDark ? "text-gray-700" : "text-gray-300"}`} />
-					<p className={`text-xs sm:text-sm ${isDark ? "text-gray-600" : "text-gray-400"}`}>
+					<Tv className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 text-gray-300 dark:text-gray-700" />
+					<p className="text-xs sm:text-sm text-gray-400 dark:text-gray-600">
 						No Stream
 					</p>
 				</div>
@@ -361,11 +351,7 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 			onMouseLeave={() => !isMobile && setShowControls(false)}
 			onClick={handleContainerTap}
 			onTouchStart={handleContainerTap}
-			className={`relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden ${
-				isDark 
-					? "bg-gray-900 border border-gray-800" 
-					: "bg-white border border-gray-200"
-			} shadow-xl`}
+			className="relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-xl bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800"
 		>
 			{/* YouTube Player Container */}
 			{room.streamType === "youtube" && videoId ? (
@@ -380,10 +366,8 @@ function LiveStreamCard({ room, index, isDark }: LiveStreamCardProps) {
 					roomName={room.name}
 				/>
 			) : (
-				<div className={`absolute inset-0 flex items-center justify-center ${
-					isDark ? "bg-gray-800" : "bg-gray-100"
-				}`}>
-					<Tv className={`h-8 w-8 ${isDark ? "text-gray-600" : "text-gray-400"}`} />
+				<div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+					<Tv className="h-8 w-8 text-gray-400 dark:text-gray-600" />
 				</div>
 			)}
 
