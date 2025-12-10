@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Suspense } from "react";
 
-export default function HomePage() {
+function HomeContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -24,5 +25,23 @@ export default function HomePage() {
 				</p>
 			</div>
 		</div>
+	);
+}
+
+// Wrap in Suspense to handle useSearchParams during static generation
+export default function HomePage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+				<div className="text-center">
+					<Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600 dark:text-purple-400" />
+					<p className="text-sm text-gray-600 dark:text-gray-400">
+						Loading Market Pulse Live...
+					</p>
+				</div>
+			</div>
+		}>
+			<HomeContent />
+		</Suspense>
 	);
 }

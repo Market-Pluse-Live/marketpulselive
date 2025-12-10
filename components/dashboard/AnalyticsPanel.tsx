@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { BarChart3, TrendingUp, Clock, Users, ChevronDown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -63,6 +63,22 @@ export function AnalyticsPanel() {
 	const { theme } = useTheme();
 	const isDark = theme === "dark";
 	const [timeRange, setTimeRange] = useState("24h");
+	const [canRender, setCanRender] = useState(false);
+
+	// Prevent Recharts from rendering during SSR (causes width/height -1 error)
+	useEffect(() => {
+		setCanRender(true);
+	}, []);
+
+	if (!canRender) {
+		return (
+			<div className={`rounded-2xl border backdrop-blur-sm overflow-hidden h-96 animate-pulse ${
+				isDark 
+					? "border-gray-800 bg-gray-900/50" 
+					: "border-gray-200 bg-white/80"
+			}`} />
+		);
+	}
 
 	return (
 		<motion.div

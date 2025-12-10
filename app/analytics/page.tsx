@@ -115,6 +115,12 @@ export default function AnalyticsPage() {
 	const [timeRange, setTimeRange] = useState<TimeRange>("24h");
 	const [sortBy, setSortBy] = useState<"views" | "watchTime" | "peakViewers">("views");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+	const [canRender, setCanRender] = useState(false);
+
+	// Prevent Recharts from rendering during SSR (causes width/height -1 error)
+	useEffect(() => {
+		setCanRender(true);
+	}, []);
 
 	const sortedRoomData = [...roomPerformanceData].sort((a, b) => {
 		const multiplier = sortOrder === "desc" ? -1 : 1;
@@ -129,6 +135,20 @@ export default function AnalyticsPage() {
 			setSortOrder("desc");
 		}
 	};
+
+	// Show loading state while waiting for client-side render
+	if (!canRender) {
+		return (
+			<div className={`min-h-screen flex items-center justify-center ${
+				isDark ? "bg-gray-950" : "bg-gray-50"
+			}`}>
+				<div className="text-center">
+					<div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent mx-auto mb-4" />
+					<p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Loading analytics...</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className={`min-h-screen transition-colors duration-300 ${
