@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Sun, Moon } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
@@ -136,15 +135,9 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 function ViewerHeader({ liveCount }: { liveCount: number }) {
 	const { setAsAdmin } = useRole();
 	const { toggleTheme, theme } = useTheme();
-	const searchParams = useSearchParams();
-	
-	// Read whop params for gating
-	const bizId = searchParams.get("companyId");
-	
-	// Allowed business ID for admin access
-	const ALLOWED_BIZ_ID = "biz_VlcyoPPLQClcwJ";
 	
 	// Secret admin access - click Live badge 5 times
+	// Security: Only you know the admin key (mpl-admin-2024)
 	const [badgeClickCount, setBadgeClickCount] = useState(0);
 	const [showAdminModal, setShowAdminModal] = useState(false);
 	const [adminKey, setAdminKey] = useState("");
@@ -165,15 +158,13 @@ function ViewerHeader({ liveCount }: { liveCount: number }) {
 		}, 3000);
 	};
 	
-	// Show admin modal when 5 clicks reached (only for allowed business)
+	// Show admin modal when 5 clicks reached
 	useEffect(() => {
-		if (badgeClickCount >= 5 && bizId === ALLOWED_BIZ_ID) {
-			setShowAdminModal(true);
-		}
 		if (badgeClickCount >= 5) {
+			setShowAdminModal(true);
 			setBadgeClickCount(0);
 		}
-	}, [badgeClickCount, bizId]);
+	}, [badgeClickCount]);
 	
 	// Handle admin key submission
 	const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -222,18 +213,14 @@ function ViewerHeader({ liveCount }: { liveCount: number }) {
 							<Moon className="h-4 w-4 sm:h-5 sm:w-5 block dark:hidden" />
 						</button>
 						
-						{/* Live badge - click 5x for admin access (only for allowed business) */}
-						<div
-							onClick={bizId === ALLOWED_BIZ_ID ? handleLiveClick : undefined}
-							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full select-none transition-all active:scale-95 bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 ${
-								bizId === ALLOWED_BIZ_ID 
-									? "cursor-pointer hover:bg-red-100 dark:hover:bg-red-500/20" 
-									: "cursor-default"
-							}`}
+					{/* Live badge - click 5x for admin access (secured by admin key) */}
+						<button
+							onClick={handleLiveClick}
+							className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full select-none transition-all active:scale-95 cursor-pointer bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:border-red-500/20 dark:hover:bg-red-500/20"
 						>
 							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
 							<span className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">{liveCount} Live</span>
-						</div>
+						</button>
 					</div>
 				</div>
 			</header>

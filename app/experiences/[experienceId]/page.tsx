@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ViewerDashboard } from "@/components/dashboard/ViewerDashboard";
 import { RoleGate } from "@/components/auth/RoleGate";
 import { useRole } from "@/lib/role-context";
@@ -16,6 +16,15 @@ export default function ExperiencePage({
 }) {
 	const { isAdmin } = useRole();
 	const router = useRouter();
+	const resolvedParams = useParams<{ experienceId: string }>();
+	const searchParams = useSearchParams();
+
+	// Derive company/experience id from path or query (Whop may pass either)
+	const experienceId =
+		resolvedParams?.experienceId ||
+		searchParams.get("experienceId") ||
+		searchParams.get("companyId") ||
+		"dev-company";
 
 	// Redirect to dashboard if user becomes admin
 	useEffect(() => {
@@ -27,7 +36,7 @@ export default function ExperiencePage({
 	// Show viewer dashboard for non-admins
 	return (
 		<RoleGate>
-			<ViewerDashboard companyId="dev-company" />
+			<ViewerDashboard companyId={experienceId} />
 		</RoleGate>
 	);
 }
