@@ -10,9 +10,10 @@ import type { Room } from "@/lib/types";
 
 interface ViewerDashboardProps {
 	companyId: string;
+	isAllowedCompany?: boolean;
 }
 
-export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
+export function ViewerDashboard({ companyId, isAllowedCompany = false }: ViewerDashboardProps) {
 	const [rooms, setRooms] = useState<Room[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -48,7 +49,7 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 	if (isLoading) {
 		return (
 			<div className="min-h-screen transition-colors duration-300 bg-gradient-to-b from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
-				<ViewerHeader liveCount={0} />
+				<ViewerHeader liveCount={0} isAllowedCompany={isAllowedCompany} />
 				<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 						{[...Array(8)].map((_, i) => (
@@ -65,7 +66,7 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 
 	return (
 		<div className="min-h-screen transition-colors duration-300 bg-gradient-to-b from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
-			<ViewerHeader liveCount={liveCount} />
+			<ViewerHeader liveCount={liveCount} isAllowedCompany={isAllowedCompany} />
 			
 			<div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
 				{/* Live Streams Header */}
@@ -132,12 +133,12 @@ export function ViewerDashboard({ companyId }: ViewerDashboardProps) {
 }
 
 // Clean header for viewers with secret admin access via Live button
-function ViewerHeader({ liveCount }: { liveCount: number }) {
+function ViewerHeader({ liveCount, isAllowedCompany }: { liveCount: number; isAllowedCompany: boolean }) {
 	const { setAsAdmin } = useRole();
 	const { toggleTheme, theme } = useTheme();
 	
 	// Secret admin access - click Live badge 5 times
-	// Security: Only you know the admin key (mpl-admin-2024)
+	// Only allowed for your company (checked server-side via Whop SDK)
 	const [badgeClickCount, setBadgeClickCount] = useState(0);
 	const [showAdminModal, setShowAdminModal] = useState(false);
 	const [adminKey, setAdminKey] = useState("");
@@ -158,13 +159,15 @@ function ViewerHeader({ liveCount }: { liveCount: number }) {
 		}, 3000);
 	};
 	
-	// Show admin modal when 5 clicks reached
+	// Show admin modal when 5 clicks reached (only for allowed company)
 	useEffect(() => {
-		if (badgeClickCount >= 5) {
+		if (badgeClickCount >= 5 && isAllowedCompany) {
 			setShowAdminModal(true);
+		}
+		if (badgeClickCount >= 5) {
 			setBadgeClickCount(0);
 		}
-	}, [badgeClickCount]);
+	}, [badgeClickCount, isAllowedCompany]);
 	
 	// Handle admin key submission
 	const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -213,14 +216,16 @@ function ViewerHeader({ liveCount }: { liveCount: number }) {
 							<Moon className="h-4 w-4 sm:h-5 sm:w-5 block dark:hidden" />
 						</button>
 						
-					{/* Live badge - click 5x for admin access (secured by admin key) */}
-						<button
-							onClick={handleLiveClick}
-							className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full select-none transition-all active:scale-95 cursor-pointer bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:border-red-500/20 dark:hover:bg-red-500/20"
+					{/* Live badge - click 5x for admin access (only for allowed company) */}
+						<div
+							onClick={isAllowedCompany ? handleLiveClick : undefined}
+							className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full select-none transition-all active:scale-95 bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 ${
+								isAllowedCompany ? "cursor-pointer hover:bg-red-100 dark:hover:bg-red-500/20" : "cursor-default"
+							}`}
 						>
 							<span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse" />
 							<span className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">{liveCount} Live</span>
-						</button>
+						</div>
 					</div>
 				</div>
 			</header>
