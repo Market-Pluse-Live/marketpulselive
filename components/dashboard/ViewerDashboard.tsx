@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Sun, Moon } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
@@ -134,8 +135,16 @@ export function ViewerDashboard({ companyId, isAllowedCompany = false }: ViewerD
 
 // Clean header for viewers with secret admin access via Live button
 function ViewerHeader({ liveCount, isAllowedCompany }: { liveCount: number; isAllowedCompany: boolean }) {
-	const { setAsAdmin } = useRole();
+	const { setAsAdmin, isAdmin } = useRole();
 	const { toggleTheme, theme } = useTheme();
+	const router = useRouter();
+	
+	// Redirect to admin dashboard when admin key is successfully entered
+	useEffect(() => {
+		if (isAdmin) {
+			router.push("/dashboard/dev-company");
+		}
+	}, [isAdmin, router]);
 	
 	// Secret admin access - click Live badge 5 times
 	// Only allowed for your company (checked server-side via Whop SDK)
