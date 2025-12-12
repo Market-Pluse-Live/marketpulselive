@@ -24,7 +24,7 @@ export default async function ExperiencePage({
 
 	return (
 		<RoleGate>
-			<ViewerDashboard companyId={experienceId} isAllowedCompany={isAllowedCompany} />
+			<ViewerDashboard companyId="dev-company" isAllowedCompany={isAllowedCompany} />
 		</RoleGate>
 	);
 }
