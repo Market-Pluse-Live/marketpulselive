@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Sun, Moon } from "lucide-react";
+import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
-import { useTheme } from "@/lib/theme-context";
 import { useRole } from "@/lib/role-context";
 import type { Room } from "@/lib/types";
 
@@ -136,7 +135,6 @@ export function ViewerDashboard({ companyId, isAllowedCompany = false }: ViewerD
 // Clean header for viewers with secret admin access via Live button
 function ViewerHeader({ liveCount, isAllowedCompany }: { liveCount: number; isAllowedCompany: boolean }) {
 	const { setAsAdmin, isAdmin } = useRole();
-	const { toggleTheme, theme } = useTheme();
 	const router = useRouter();
 	
 	// Redirect to admin dashboard when admin key is successfully entered
@@ -213,18 +211,8 @@ function ViewerHeader({ liveCount, isAllowedCompany }: { liveCount: number; isAl
 						</div>
 					</div>
 
-					{/* Right side - Theme toggle and Live badge */}
+					{/* Right side - Live badge */}
 					<div className="flex items-center gap-2 sm:gap-3">
-						{/* Theme toggle button */}
-						<button
-							onClick={toggleTheme}
-							className="p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 text-gray-600 hover:bg-gray-100 dark:text-yellow-400 dark:hover:bg-gray-800"
-							title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-						>
-							<Sun className="h-4 w-4 sm:h-5 sm:w-5 hidden dark:block" />
-							<Moon className="h-4 w-4 sm:h-5 sm:w-5 block dark:hidden" />
-						</button>
-						
 					{/* Live badge - click 5x for admin access (only for allowed company) */}
 						<div
 							onClick={isAllowedCompany ? handleLiveClick : undefined}
