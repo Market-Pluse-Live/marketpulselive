@@ -8,14 +8,14 @@ export async function POST(request: NextRequest) {
 	try {
 		// Create a checkout configuration for the PRO plan
 		const checkoutConfig = await whopsdk.checkoutConfigurations.create({
-			company_id: "biz_VlcyoPPLQClcwJ",
-			plan_id: PRO_PLAN_ID,
+			companyId: "biz_VlcyoPPLQClcwJ",
+			planId: PRO_PLAN_ID,
 		});
 
 		return NextResponse.json({
 			id: checkoutConfig.id,
 			planId: PRO_PLAN_ID,
-			purchaseUrl: checkoutConfig.purchase_url,
+			purchaseUrl: checkoutConfig.purchaseUrl,
 		});
 	} catch (error) {
 		console.error("Error creating checkout configuration:", error);
