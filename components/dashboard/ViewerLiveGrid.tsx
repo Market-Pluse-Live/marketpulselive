@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Tv, Volume2, VolumeX, Volume1, Maximize2, Radio, Minus, Plus } from "lucide-react";
+import { Tv, Volume2, VolumeX, Volume1, Maximize2, Radio, Minus, Plus, Lock, Crown } from "lucide-react";
 import type { Room } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { useSubscription } from "@/lib/subscription-context";
 
 // Declare YouTube types
 declare global {
@@ -108,6 +109,10 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 	const playerContainerId = useRef(`yt-player-${room?.id || index}-${Date.now()}`);
 	const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	
+	// Subscription/freemium handling
+	const { isStreamLocked, setShowUpgradeModal, setUpgradeReason, startWatching, stopWatching, isPro, watchTimeExpired } = useSubscription();
+	const isLocked = room ? isStreamLocked(index) : false;
 
 	// Detect mobile device
 	useEffect(() => {
@@ -178,6 +183,10 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 								onReady: () => {
 									if (mounted) {
 										setPlayerReady(true);
+										// Start tracking watch time for free users on unlocked streams
+										if (!isLocked) {
+											startWatching();
+										}
 										// Apply current volume setting
 										if (playerRef.current) {
 											if (volume === 0) {
@@ -242,9 +251,25 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 
 	const handleExpand = useCallback(() => {
 		if (room) {
+			if (isLocked) {
+				setUpgradeReason("locked_stream");
+				setShowUpgradeModal(true);
+				return;
+			}
+			if (watchTimeExpired) {
+				setUpgradeReason("time_expired");
+				setShowUpgradeModal(true);
+				return;
+			}
 			router.push(`/rooms/${room.id}?companyId=${room.companyId}`);
 		}
-	}, [room, router]);
+	}, [room, router, isLocked, watchTimeExpired, setUpgradeReason, setShowUpgradeModal]);
+	
+	// Handle click on locked stream
+	const handleLockedClick = useCallback(() => {
+		setUpgradeReason("locked_stream");
+		setShowUpgradeModal(true);
+	}, [setUpgradeReason, setShowUpgradeModal]);
 
 	// Volume control functions with touch support
 	const increaseVolume = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -341,6 +366,46 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 
 	const isMuted = volume === 0;
 
+	// Locked stream - show preview with lock overlay
+	if (isLocked) {
+		return (
+			<motion.div
+				initial={{ opacity: 0, scale: 0.95 }}
+				animate={{ opacity: 1, scale: 1 }}
+				transition={{ delay: index * 0.05 }}
+				onClick={handleLockedClick}
+				className="relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-xl cursor-pointer group bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700"
+			>
+				{/* Blurred/dimmed background */}
+				<div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 to-pink-900/30" />
+				
+				{/* PRO Badge */}
+				<div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+					<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold shadow-lg">
+						<Crown className="h-3 w-3" />
+						<span>PRO</span>
+					</div>
+				</div>
+				
+				{/* Lock overlay */}
+				<div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+					<div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+						<Lock className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
+					</div>
+					<h3 className="text-white text-sm sm:text-base font-semibold mb-1">
+						{room.name}
+					</h3>
+					<p className="text-white/70 text-xs sm:text-sm">
+						Upgrade to PRO to unlock
+					</p>
+				</div>
+				
+				{/* Hover effect */}
+				<div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+			</motion.div>
+		);
+	}
+
 	return (
 		<motion.div
 			ref={containerRef}
@@ -379,10 +444,18 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 			>
 				{/* Top bar */}
 				<div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center justify-between pointer-events-auto">
-					{/* Live badge */}
-					<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
-						<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
-						<span className="text-[10px] sm:text-xs">LIVE</span>
+					{/* Live badge + Free badge for first stream */}
+					<div className="flex items-center gap-1.5 sm:gap-2">
+						<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
+							<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
+							<span className="text-[10px] sm:text-xs">LIVE</span>
+						</div>
+						{/* Show FREE badge on first stream for non-PRO users */}
+						{index === 0 && !isPro && (
+							<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500 text-white text-[10px] sm:text-xs font-bold">
+								<span>FREE</span>
+							</div>
+						)}
 					</div>
 					
 					{/* Expand button */}

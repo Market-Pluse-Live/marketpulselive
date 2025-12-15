@@ -125,7 +125,7 @@ export function DashboardClient({ companyId }: DashboardClientProps) {
 	if (!isAdmin) {
 		return (
 			<RoleGate>
-				<ViewerDashboard companyId={companyId} isAllowedCompany={true} />
+				<ViewerDashboard companyId={companyId} isAllowedCompany={true} isPro={true} />
 			</RoleGate>
 		);
 	}

@@ -3,17 +3,27 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X } from "lucide-react";
+import { Tv, Radio, Key, Shield, Loader2, AlertCircle, X, Crown, Clock, Sparkles } from "lucide-react";
 import { ViewerLiveGrid } from "./ViewerLiveGrid";
 import { useRole } from "@/lib/role-context";
+import { SubscriptionProvider, useSubscription } from "@/lib/subscription-context";
 import type { Room } from "@/lib/types";
 
 interface ViewerDashboardProps {
 	companyId: string;
 	isAllowedCompany?: boolean;
+	isPro?: boolean;
 }
 
-export function ViewerDashboard({ companyId, isAllowedCompany = false }: ViewerDashboardProps) {
+export function ViewerDashboard({ companyId, isAllowedCompany = false, isPro = false }: ViewerDashboardProps) {
+	return (
+		<SubscriptionProvider isPro={isPro}>
+			<ViewerDashboardContent companyId={companyId} isAllowedCompany={isAllowedCompany} />
+		</SubscriptionProvider>
+	);
+}
+
+function ViewerDashboardContent({ companyId, isAllowedCompany }: { companyId: string; isAllowedCompany: boolean }) {
 	const [rooms, setRooms] = useState<Room[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -128,6 +138,12 @@ export function ViewerDashboard({ companyId, isAllowedCompany = false }: ViewerD
 					</motion.div>
 				)}
 			</div>
+			
+			{/* Upgrade Modal */}
+			<UpgradeModal />
+			
+			{/* Free tier time remaining indicator */}
+			<FreeTimeIndicator />
 		</div>
 	);
 }
@@ -319,5 +335,171 @@ function ViewerHeader({ liveCount, isAllowedCompany }: { liveCount: number; isAl
 				)}
 			</AnimatePresence>
 		</>
+	);
+}
+
+// Upgrade Modal Component
+function UpgradeModal() {
+	const { showUpgradeModal, setShowUpgradeModal, upgradeReason } = useSubscription();
+	const [isProcessing, setIsProcessing] = useState(false);
+	
+	if (!showUpgradeModal) return null;
+	
+	const handleUpgrade = async () => {
+		setIsProcessing(true);
+		try {
+			// Create checkout configuration on server
+			const response = await fetch("/api/checkout", { method: "POST" });
+			const data = await response.json();
+			
+			if (data.purchaseUrl) {
+				// Open Whop checkout in new tab (works both in and out of iframe)
+				window.open(data.purchaseUrl, "_blank");
+			} else if (data.error) {
+				console.error("Checkout error:", data.error);
+			}
+		} catch (error) {
+			console.error("Failed to create checkout:", error);
+		} finally {
+			setIsProcessing(false);
+			setShowUpgradeModal(false);
+		}
+	};
+	
+	return (
+		<AnimatePresence>
+			{showUpgradeModal && (
+				<motion.div
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+					onClick={() => setShowUpgradeModal(false)}
+				>
+					<motion.div
+						initial={{ scale: 0.95, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						exit={{ scale: 0.95, opacity: 0 }}
+						onClick={(e) => e.stopPropagation()}
+						className="bg-gradient-to-b from-gray-900 to-gray-950 rounded-2xl p-6 sm:p-8 max-w-md w-full border border-gray-800 shadow-2xl"
+					>
+						{/* Close button */}
+						<button
+							onClick={() => setShowUpgradeModal(false)}
+							className="absolute top-4 right-4 p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+						>
+							<X className="h-5 w-5" />
+						</button>
+						
+						{/* Icon */}
+						<div className="flex justify-center mb-6">
+							<div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+								<Crown className="h-8 w-8 text-white" />
+							</div>
+						</div>
+						
+						{/* Title */}
+						<h2 className="text-2xl font-bold text-white text-center mb-2">
+							Upgrade to PRO
+						</h2>
+						
+						{/* Reason message */}
+						<p className="text-gray-400 text-center mb-6">
+							{upgradeReason === "time_expired" 
+								? "Your free 15-minute session has ended. Upgrade to PRO for unlimited access!"
+								: "This stream is only available for PRO members. Upgrade to unlock all 8 streams!"}
+						</p>
+						
+						{/* Features */}
+						<div className="space-y-3 mb-6">
+							<div className="flex items-center gap-3 text-gray-300">
+								<div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+									<Sparkles className="h-4 w-4 text-green-400" />
+								</div>
+								<span>Unlimited access to all 8 streams</span>
+							</div>
+							<div className="flex items-center gap-3 text-gray-300">
+								<div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+									<Clock className="h-4 w-4 text-blue-400" />
+								</div>
+								<span>No time limits - watch anytime</span>
+							</div>
+							<div className="flex items-center gap-3 text-gray-300">
+								<div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+									<Tv className="h-4 w-4 text-purple-400" />
+								</div>
+								<span>HD quality on all streams</span>
+							</div>
+						</div>
+						
+						{/* CTA Button */}
+						<button
+							onClick={handleUpgrade}
+							disabled={isProcessing}
+							className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-lg transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+						>
+							{isProcessing ? (
+								<>
+									<Loader2 className="h-5 w-5 animate-spin" />
+									Processing...
+								</>
+							) : (
+								<>
+									<Crown className="h-5 w-5" />
+									Upgrade to PRO
+								</>
+							)}
+						</button>
+						
+						{/* Close link */}
+						<button
+							onClick={() => setShowUpgradeModal(false)}
+							className="w-full mt-3 py-2 text-gray-500 hover:text-gray-300 text-sm transition-colors"
+						>
+							Maybe later
+						</button>
+					</motion.div>
+				</motion.div>
+			)}
+		</AnimatePresence>
+	);
+}
+
+// Free tier time remaining indicator
+function FreeTimeIndicator() {
+	const { isPro, formatRemainingTime, remainingTime, watchTimeExpired } = useSubscription();
+	
+	// Don't show for PRO users or if time expired
+	if (isPro || watchTimeExpired) return null;
+	
+	// Only show when time is running (user is watching)
+	if (remainingTime >= 15 * 60) return null;
+	
+	const isLowTime = remainingTime < 5 * 60; // Less than 5 minutes
+	
+	return (
+		<motion.div
+			initial={{ opacity: 0, y: 50 }}
+			animate={{ opacity: 1, y: 0 }}
+			className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-40 ${
+				isLowTime ? "animate-pulse" : ""
+			}`}
+		>
+			<div className={`flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-xl shadow-lg border ${
+				isLowTime 
+					? "bg-red-500/20 border-red-500/30 text-red-300" 
+					: "bg-gray-900/90 border-gray-700 text-white"
+			}`}>
+				<Clock className={`h-5 w-5 ${isLowTime ? "text-red-400" : "text-amber-400"}`} />
+				<div>
+					<p className="text-sm font-medium">
+						Free trial: <span className="font-bold">{formatRemainingTime()}</span> remaining
+					</p>
+					<p className="text-xs opacity-70">
+						Upgrade to PRO for unlimited access
+					</p>
+				</div>
+			</div>
+		</motion.div>
 	);
 }
