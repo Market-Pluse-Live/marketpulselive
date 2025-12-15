@@ -5,9 +5,8 @@ import { RoleGate } from "@/components/auth/RoleGate";
 // Your allowed company ID (for admin access)
 const ALLOWED_COMPANY_IDS = ["biz_VlcyoPPLQClcwJ"];
 
-// ⚠️ TESTING MODE - Change this to test different versions:
-// false = FREE version (1 stream, others locked)
-// true = PRO version (all streams unlocked)
+// ⚠️ SET TO FALSE TO TEST FREE VERSION (locks on streams 2-8)
+// ⚠️ SET TO TRUE TO TEST PRO VERSION (all streams unlocked)
 const TEST_MODE_IS_PRO = false;
 
 export default async function ExperiencePage({
