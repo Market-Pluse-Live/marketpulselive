@@ -23,20 +23,19 @@ export default async function ExperiencePage({
 		const company = experience.company?.id;
 		isAllowedCompany = company ? ALLOWED_COMPANY_IDS.includes(company) : false;
 		
-		// Check if user has access to this experience
+		// Check if user has PAID membership (PRO access)
 		try {
 			const { userId } = await whopsdk.verifyUserToken(await headers());
 			const access = await whopsdk.users.checkAccess(experienceId, { id: userId });
 			
-			// PRO access for:
-			// - "customer" = user paid individually OR is member of a community that paid
-			// - "admin" = team member/owner of the business
-			// Both get PRO because the business (Selfish Trader) paid for the app
-			if (access.has_access) {
+			// PRO access ONLY for "customer" = business/user actually PAID
+			// "admin" = app owner/team member (doesn't mean they paid)
+			// This ensures only paying businesses get PRO
+			if (access.has_access && access.access_level === "customer") {
 				isPro = true;
 			}
 		} catch (authError) {
-			// User not authenticated - they're on free tier (app store visitor)
+			// User not authenticated - they're on free tier
 			console.log("User not authenticated:", authError);
 		}
 	} catch (error) {
