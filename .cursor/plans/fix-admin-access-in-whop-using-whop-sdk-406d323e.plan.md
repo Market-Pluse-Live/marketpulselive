@@ -1,71 +1,91 @@
 <!-- 406d323e-c7f6-4d19-a7ba-9dca15393730 06dc5b6e-194d-437f-8189-ce81b3217872 -->
-# Fix Admin Access in Whop (Using Whop SDK)
+# Fix PRO Access Detection
 
 ## Problem
 
-Whop passes `experienceId` in the URL path, not `companyId` as a query param. We need to use the Whop SDK to get the company ID from the experience.
+The current code uses `whopsdk.users.checkAccess()` which checks experience/company access, but this doesn't properly detect if a user has paid for the PRO product subscription.
 
 ## Solution
 
-Use `client.experiences.retrieve(experienceId)` to get `experience.company.id`, then compare it to `biz_VlcyoPPLQClcwJ`.
+Use Whop's `access.checkIfUserHasAccessToAccessPass()` method which specifically checks if a user has a valid membership to a product.
 
-## Changes
+## Code Change
 
-### 1. Update `ViewerDashboard.tsx` (ViewerHeader component)
+Update [app/experiences/[experienceId]/page.tsx](app/experiences/[experienceId]/page.tsx):
 
-**Remove unused imports and business ID logic:**
+```typescript
+import { headers } from "next/headers";
+import { whopsdk } from "@/lib/whop-sdk";
+import { ViewerDashboard } from "@/components/dashboard/ViewerDashboard";
+import { RoleGate } from "@/components/auth/RoleGate";
 
-- Remove `useParams` and `useSearchParams` imports (no longer needed)
-- Remove `bizId`, `ALLOWED_BIZ_ID`, and `isAllowedBiz` variables
+// Your app developer company ID (for admin testing)
+const APP_DEVELOPER_COMPANY = "biz_VlcyoPPLQClcwJ";
 
-**Simplify the Live badge click handler:**
+// Your PRO product ID - users who paid have access to this
+const PRO_PRODUCT_ID = "prod_wQqWrjERBaVub";
 
-- Always allow clicks (no conditional)
-- Change from `<div>` to `<button>` for better accessibility
+export default async function ExperiencePage({
+  params,
+}: {
+  params: Promise<{ experienceId: string }>;
+}) {
+  const { experienceId } = await params;
+  
+  let isAllowedCompany = false;
+  let isPro = false;
+  
+  try {
+    // Get experience details
+    const experience = await whopsdk.experiences.retrieve(experienceId);
+    const company = experience.company?.id;
+    isAllowedCompany = company === APP_DEVELOPER_COMPANY;
+    
+    // Check if user has PAID for PRO product
+    try {
+      const { userId } = await whopsdk.verifyUserToken(await headers());
+      
+      // Use the correct method to check product access
+      const proAccess = await whopsdk.access.checkIfUserHasAccessToAccessPass({
+        accessPassId: PRO_PRODUCT_ID,
+        userId: userId,
+      });
+      
+      // If user has access to PRO product = they PAID
+      if (proAccess.hasAccess) {
+        isPro = true;
+      }
+      
+      // App developer sees FREE for testing
+      if (isAllowedCompany) {
+        isPro = false;
+      }
+    } catch (authError) {
+      console.log("Auth error:", authError);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
 
-**Current problematic code (~lines 139-150):**
-
-```tsx
-const params = useParams();
-const searchParams = useSearchParams();
-const bizId = searchParams.get("companyId") || ...;
-const ALLOWED_BIZ_ID = "biz_VlcyoPPLQClcwJ";
-const isAllowedBiz = !bizId || bizId === ALLOWED_BIZ_ID;
+  return (
+    <RoleGate>
+      <ViewerDashboard companyId="dev-company" isAllowedCompany={isAllowedCompany} isPro={isPro} />
+    </RoleGate>
+  );
+}
 ```
 
-**New simplified code:**
+## Key Differences
 
-```tsx
-// No ID checking - admin key provides security
-```
+1. Changed from `whopsdk.users.checkAccess()` to `whopsdk.access.checkIfUserHasAccessToAccessPass()`
+2. This method takes `accessPassId` (the product ID) and `userId`
+3. Returns `hasAccess: boolean` which directly tells us if the user paid
 
-**Current onClick (~line 232):**
+## After Implementation
 
-```tsx
-onClick={isAllowedBiz ? handleLiveClick : undefined}
-```
-
-**New onClick:**
-
-```tsx
-onClick={handleLiveClick}
-```
-
-## Security
-
-- The admin key `mpl-admin-2024` is the security layer
-- Only you know this key
-- Viewers can click 5 times but cannot access without the key
-
-## Files to modify
-
-- `components/dashboard/ViewerDashboard.tsx`
-
-## After implementation
-
-1. Commit and push to GitHub
-2. Netlify auto-deploys
-3. Test in Whop: click "Live" badge 5x, enter key, access admin
+1. Push to GitHub
+2. Redeploy on Netlify
+3. Test with Selfish Trader - should now see PRO access
 
 ### To-dos
 
