@@ -27,7 +27,8 @@ export default async function ExperiencePage({
 		
 		// Check if user has PAID for PRO product
 		// This checks if the business owner paid, which gives access to all members
-		const { userId } = await whopsdk.verifyUserToken(headers());
+		const headersList = await headers();
+		const { userId } = await whopsdk.verifyUserToken(headersList);
 		const access = await whopsdk.users.checkAccess(PRO_PRODUCT_ID, { id: userId });
 		
 		// Only give PRO if they have access to the paid product
