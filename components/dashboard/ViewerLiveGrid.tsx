@@ -446,9 +446,9 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 				<div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center justify-between pointer-events-auto">
 					{/* Live badge + Free badge for first stream */}
 					<div className="flex items-center gap-1.5 sm:gap-2">
-						<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
-							<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
-							<span className="text-[10px] sm:text-xs">LIVE</span>
+					<div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold">
+						<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
+						<span className="text-[10px] sm:text-xs">LIVE</span>
 						</div>
 						{/* Show FREE badge on first stream for non-PRO users */}
 						{index === 0 && !isPro && (
