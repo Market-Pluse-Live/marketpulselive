@@ -19,26 +19,42 @@ export default async function ExperiencePage({
 	// DEFAULT: Everyone starts on FREE tier
 	let isPro = false;
 	let isAllowedCompany = false;
+	let debugInfo = "";
 	
 	try {
 		// Get the experience to check company
 		const experience = await whopsdk.experiences.retrieve(experienceId);
 		isAllowedCompany = experience.company?.id === APP_DEVELOPER_COMPANY;
+		const companyId = experience.company?.id || "unknown";
 		
-		// Check if user has PAID for PRO product
-		// This checks if the business owner paid, which gives access to all members
-		const headersList = await headers();
-		const { userId } = await whopsdk.verifyUserToken(headersList);
-		const access = await whopsdk.users.checkAccess(PRO_PRODUCT_ID, { id: userId });
+		// Check if experience has access_pass_ids (products attached)
+		const accessPassIds = (experience as { access_pass_ids?: string[] }).access_pass_ids || [];
+		debugInfo += `Company: ${companyId}, Products: ${accessPassIds.join(",")}`;
 		
-		// Only give PRO if they have access to the paid product
-		if (access.has_access) {
+		// If the experience has the PRO product attached, business has paid
+		if (accessPassIds.includes(PRO_PRODUCT_ID)) {
 			isPro = true;
+			debugInfo += " | PRO via product attachment";
+		} else {
+			// Fallback: Check user's direct access to PRO product
+			const headersList = await headers();
+			const { userId } = await whopsdk.verifyUserToken(headersList);
+			const productAccess = await whopsdk.users.checkAccess(PRO_PRODUCT_ID, { id: userId });
+			debugInfo += ` | User ${userId}: access=${productAccess.has_access}, level=${productAccess.access_level}`;
+			
+			if (productAccess.has_access) {
+				isPro = true;
+				debugInfo += " | PRO via user access";
+			}
 		}
-	} catch {
+	} catch (error) {
 		// If any error, stay on FREE tier (safe default)
 		isPro = false;
+		debugInfo = `Error: ${error instanceof Error ? error.message : "Unknown"}`;
 	}
+
+	// Log debug info server-side
+	console.log(`[PRO Check] experienceId=${experienceId}, isPro=${isPro}, ${debugInfo}`);
 
 	return (
 		<RoleGate>
