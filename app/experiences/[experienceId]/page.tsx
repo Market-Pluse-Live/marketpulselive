@@ -19,43 +19,33 @@ export default async function ExperiencePage({
 	// DEFAULT: Everyone starts on FREE tier
 	let isPro = false;
 	let isAllowedCompany = false;
-	let debugInfo = "";
 	
 	try {
 		// Get the experience to check company
 		const experience = await whopsdk.experiences.retrieve(experienceId);
 		isAllowedCompany = experience.company?.id === APP_DEVELOPER_COMPANY;
-		const companyId = experience.company?.id || "unknown";
-		
-		debugInfo += `Co:${companyId}`;
 		
 		// Get user info
 		const headersList = await headers();
 		const { userId } = await whopsdk.verifyUserToken(headersList);
-		debugInfo += ` U:${userId}`;
 		
-		// 1. Check access to PRO product
+		// 1. Check access to PRO product directly
 		const productAccess = await whopsdk.users.checkAccess(PRO_PRODUCT_ID, { id: userId });
-		debugInfo += ` | Prod:${productAccess.has_access}/${productAccess.access_level}`;
 		
 		if (productAccess.has_access) {
 			isPro = true;
 		} else {
 			// 2. Check access to experience - if "customer", they have a paid membership
+			// This catches cases where the business owner paid for the app
 			const expAccess = await whopsdk.users.checkAccess(experienceId, { id: userId });
-			debugInfo += ` | Exp:${expAccess.has_access}/${expAccess.access_level}`;
 			
-			// If they're a paying customer of the experience, give PRO
 			if (expAccess.has_access && expAccess.access_level === "customer") {
 				isPro = true;
 			}
 		}
-		
-		debugInfo += ` | isPro:${isPro}`;
-	} catch (error) {
+	} catch {
 		// If any error, stay on FREE tier (safe default)
 		isPro = false;
-		debugInfo = `Error: ${error instanceof Error ? error.message : "Unknown"}`;
 	}
 
 	return (
@@ -64,7 +54,6 @@ export default async function ExperiencePage({
 				companyId="dev-company" 
 				isAllowedCompany={isAllowedCompany} 
 				isPro={isPro} 
-				debugInfo={debugInfo}
 			/>
 		</RoleGate>
 	);

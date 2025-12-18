@@ -13,28 +13,11 @@ interface ViewerDashboardProps {
 	companyId: string;
 	isAllowedCompany?: boolean;
 	isPro?: boolean;
-	debugInfo?: string;
 }
 
-export function ViewerDashboard({ companyId, isAllowedCompany = false, isPro = false, debugInfo }: ViewerDashboardProps) {
+export function ViewerDashboard({ companyId, isAllowedCompany = false, isPro = false }: ViewerDashboardProps) {
 	return (
 		<SubscriptionProvider isPro={isPro}>
-			{/* Temporary debug banner - REMOVE AFTER DEBUGGING */}
-			{debugInfo && (
-				<div style={{ 
-					position: 'fixed', 
-					top: 0, 
-					left: 0, 
-					right: 0, 
-					backgroundColor: '#EAB308', 
-					color: 'black', 
-					padding: '8px', 
-					fontSize: '12px',
-					zIndex: 9999 
-				}}>
-					DEBUG: isPro={String(isPro)} | {debugInfo}
-				</div>
-			)}
 			<ViewerDashboardContent companyId={companyId} isAllowedCompany={isAllowedCompany} />
 		</SubscriptionProvider>
 	);
