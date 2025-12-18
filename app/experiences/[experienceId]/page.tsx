@@ -58,6 +58,10 @@ export default async function ExperiencePage({
 
 	return (
 		<RoleGate>
+			{/* Temporary debug banner - REMOVE AFTER DEBUGGING */}
+			<div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black text-xs p-2 z-50">
+				DEBUG: isPro={String(isPro)} | {debugInfo}
+			</div>
 			<ViewerDashboard 
 				companyId="dev-company" 
 				isAllowedCompany={isAllowedCompany} 
