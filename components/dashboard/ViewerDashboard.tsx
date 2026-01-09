@@ -407,7 +407,7 @@ function UpgradeModal() {
 						<p className="text-gray-400 text-center mb-6">
 							{upgradeReason === "time_expired" 
 								? "Your free 15-minute session has ended. Upgrade to PRO for unlimited access!"
-								: "This stream is only available for PRO members. Upgrade to unlock all 8 streams!"}
+								: "You have access to 5 free streams. Upgrade to PRO to unlock all 8 streams!"}
 						</p>
 						
 						{/* Features */}
@@ -416,7 +416,7 @@ function UpgradeModal() {
 								<div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
 									<Sparkles className="h-4 w-4 text-green-400" />
 								</div>
-								<span>Unlimited access to all 8 streams</span>
+								<span>Unlock all 8 streams (3 extra PRO-only streams)</span>
 							</div>
 							<div className="flex items-center gap-3 text-gray-300">
 								<div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">

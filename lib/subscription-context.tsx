@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 // Free tier limits
-const FREE_STREAM_INDEX = 0; // Only first stream is free
+const FREE_STREAM_LIMIT = 5; // First 5 streams are free (indices 0-4)
+const TOTAL_STREAMS = 8; // Total screens available
 const FREE_WATCH_TIME_SECONDS = 15 * 60; // 15 minutes
 
 interface SubscriptionContextType {
@@ -83,7 +84,8 @@ export function SubscriptionProvider({ children, isPro = false }: SubscriptionPr
 
 	const isStreamLocked = useCallback((index: number): boolean => {
 		if (isPro) return false;
-		return index !== FREE_STREAM_INDEX;
+		// Free users get first 5 streams (indices 0-4), streams 5-7 are locked
+		return index >= FREE_STREAM_LIMIT;
 	}, [isPro]);
 
 	const startWatching = useCallback(() => {

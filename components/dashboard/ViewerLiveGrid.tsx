@@ -450,8 +450,8 @@ function LiveStreamCard({ room, index }: LiveStreamCardProps) {
 						<Radio className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-pulse" />
 						<span className="text-[10px] sm:text-xs">LIVE</span>
 						</div>
-						{/* Show FREE badge on first stream for non-PRO users */}
-						{index === 0 && !isPro && (
+						{/* Show FREE badge on first 5 streams for non-PRO users */}
+						{index < 5 && !isPro && (
 							<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500 text-white text-[10px] sm:text-xs font-bold">
 								<span>FREE</span>
 							</div>
